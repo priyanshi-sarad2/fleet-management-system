@@ -8,12 +8,12 @@ account_id   = "331860160408"
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = true
-create_eks_cluster                    = true
-create_eks_managed_node_group         = true
-create_eks_ebs_csi_driver_addon       = true
-create_cloudfront_fleetman_webapp     = true
-setup_eks_cluster_monitoring          = true
+create_vpc                            = false
+create_eks_cluster                    = false
+create_eks_managed_node_group         = false
+create_eks_ebs_csi_driver_addon       = false
+create_cloudfront_fleetman_webapp     = false
+setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = true
 
 
