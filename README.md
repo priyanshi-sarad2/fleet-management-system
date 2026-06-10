@@ -104,6 +104,8 @@ How it works here:
 - It uses simple mapping logic to decide where a request should go. For example, the frontend makes a REST call to `/api/vehicles`; the gateway intercepts it and, because it ends in `/vehicles`, forwards it to the Position Tracker.
 - This keeps the frontend isolated from backend changes. As engineers add, split, or merge microservices, they only update the gateway's mapping — the frontend doesn't have to change.
 
+![API Gateway routing — the browser calls /api/vehicles, the gateway forwards /vehicles to the Position Tracker](docs/images/api-gateway.png)
+
 ## Webapp
 
 This is the user-facing part — a JavaScript single-page app built with Angular and served by an nginx web server.
