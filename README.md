@@ -91,11 +91,18 @@ Storing history:
 
 ## API Gateway
 
-The frontend needs to talk to the backend, but it is not good practice for a frontend to call individual microservices directly. That's why we put an API Gateway in front.
+The frontend needs to talk to the backend, but in a microservice architecture we never let the frontend talk to the microservices directly.
 
-- The gateway becomes the single point of entry to the entire application — the frontend only ever talks to the gateway.
-- Its job is to delegate each incoming call to the appropriate microservice, using simple mapping logic. For example, a request ending in `/vehicles` gets forwarded to the Position Tracker.
-- This keeps the frontend isolated from backend changes. As engineers add new microservices or split existing ones, they only update the gateway's mapping — the frontend doesn't have to change.
+Why not? Because the backend is in a constant state of flux. Microservices keep changing — they grow more complex, and their number goes up and down over time. A service like the Position Tracker might get so complex that we later split it into two services, or two small services might get merged into one. If the frontend talked to the microservices directly, every one of these backend changes would force a change in the frontend too.
+
+So there should always be something in between that acts as a router between the frontend and the microservices. That something is a backend, and here we call it an API Gateway. Whether you call it a backend or an API Gateway, its purpose is the same: sit between the frontend and the microservices and route each request to the right service. It already knows how to talk to the microservices, so the frontend doesn't have to.
+
+How it works here:
+
+- The gateway is the single point of entry to the entire application — the frontend only ever talks to the gateway.
+- Its job is to delegate each incoming call to the appropriate microservice.
+- It uses simple mapping logic to decide where a request should go. For example, the frontend makes a REST call to `/api/vehicles`; the gateway intercepts it and, because it ends in `/vehicles`, forwards it to the Position Tracker.
+- This keeps the frontend isolated from backend changes. As engineers add, split, or merge microservices, they only update the gateway's mapping — the frontend doesn't have to change.
 
 ## Webapp
 
