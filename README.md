@@ -10,7 +10,7 @@ The idea is simple:
 - Every few seconds the vehicle reports its position (latitude and longitude) back to a central server.
 - The system stores that data, works out things like the vehicle's speed, and shows everything live on a map in the browser.
 
-Since this is a learning/portfolio project and there are no real trucks, the vehicle movement is faked by one of the services (the Position Simulator), which replays real GPS tracks from data files.
+Since there are no real trucks in this demo, the vehicle movement is simulated by one of the services (the Position Simulator), which replays real GPS tracks from data files.
 
 The whole thing is built as a microservices architecture (instead of one big monolith — see [Concepts & Design Decisions](#concepts--design-decisions) below), packaged into Docker containers, and deployed on Kubernetes (AWS EKS).
 
