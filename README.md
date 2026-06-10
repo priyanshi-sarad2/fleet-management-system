@@ -45,6 +45,8 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
 
 # How Each Part Works
 
+![Fleet Management System architecture — browser to nginx reverse proxy to API Gateway, with Position Simulator, ActiveMQ, and Position Tracker](docs/images/architecture.png)
+
 ## Position Simulator
 
 This microservice simulates the vehicles moving around the country.
