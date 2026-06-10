@@ -58,12 +58,6 @@ This microservice simulates the vehicles moving around the country.
 - A microservice should do only one thing, and this one's single job is to simulate vehicle positions.
 - Once it reads a position, it hands that data off to the queue (ActiveMQ). Because it runs forever and keeps producing new data over time, a queue is the natural way to handle this steady stream.
 
-Notes on how it's wired:
-
-- The simulator is isolated and does not expose any ports — nothing calls it directly, so it doesn't need its own Service.
-- It only needs an environment variable set (telling it where the queue is).
-- The queue, on the other hand, must be reachable (via a ClusterIP service) so the simulator can send messages to it.
-
 ## Queue — ActiveMQ
 
 A queue is a very common part of a microservice architecture. It lets us send data across the system without coupling the microservices together.
