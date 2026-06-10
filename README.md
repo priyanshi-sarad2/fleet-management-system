@@ -29,21 +29,21 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
 4. The API Gateway is the single entry point the frontend talks to; it forwards requests to the right backend service.
 5. The Webapp (Angular) shows the vehicles moving live on a map, with a list and route history.
 
-## The 5 Microservices
+#### The 5 Microservices
 
-| Service | Tech | Role |
-|---------|------|------|
-| **Position Simulator** | Java / Spring Boot | Generates fake GPS data from ~38 route files, publishes to queue |
-| **Queue** | ActiveMQ | Message broker (decouples services) |
-| **Position Tracker** | Spring Boot + MongoDB | Consumes positions, stores them, exposes REST API |
-| **API Gateway** | Spring Boot + Feign + Hystrix | REST facade + WebSocket/STOMP push to frontend |
-| **Webapp** | Angular 6 + Leaflet + nginx | Live map UI with vehicle list and route history |
+| Service | Tech |
+|---------|------|
+| **Position Simulator** | Java / Spring Boot |
+| **Queue** | ActiveMQ |
+| **Position Tracker** | Spring Boot + MongoDB |
+| **API Gateway** | Spring Boot + Feign + Hystrix |
+| **Webapp** | Angular 6 + Leaflet + nginx |
 
 ---
 
 # How Each Part Works
 
-## Position Simulator (Java / Spring Boot)
+## Position Simulator
 
 This microservice simulates the vehicles moving around the country.
 
@@ -74,7 +74,7 @@ How the consumer actually receives messages:
 2. The broker (ActiveMQ) pushes messages to that consumer over the open TCP connection.
 3. The consumer acknowledges (ACKs) the message. Only then does the broker treat it as successfully consumed.
 
-## Position Tracker (Spring Boot + MongoDB)
+## Position Tracker
 
 This is the most important microservice and does the real heavy lifting.
 
@@ -91,7 +91,7 @@ Storing history:
 - So the tracker stores history in MongoDB instead.
 - The data is just a large collection of JSON-like documents with nothing relational about it, which makes MongoDB (a simple document database) a good fit.
 
-## API Gateway (Backend, Spring Boot + Feign + Hystrix)
+## API Gateway
 
 The frontend needs to talk to the backend, but it is not good practice for a frontend to call individual microservices directly. That's why we put an API Gateway in front.
 
@@ -99,7 +99,7 @@ The frontend needs to talk to the backend, but it is not good practice for a fro
 - Its job is to delegate each incoming call to the appropriate microservice, using simple mapping logic. For example, a request ending in `/vehicles` gets forwarded to the Position Tracker.
 - This keeps the frontend isolated from backend changes. As engineers add new microservices or split existing ones, they only update the gateway's mapping — the frontend doesn't have to change.
 
-## Webapp (Frontend, Angular 6 + Leaflet + nginx)
+## Webapp
 
 This is the user-facing part — a JavaScript single-page app built with Angular and served by an nginx web server.
 
@@ -108,7 +108,7 @@ This is the user-facing part — a JavaScript single-page app built with Angular
 - When you select a vehicle, it draws the route history — the path the vehicle took from its start point to its current position.
 - It only communicates with the API Gateway, never with the backend microservices directly.
 
-## MongoDB (Database for Position Tracker)
+## MongoDB
 
 - A simple document database that easily stores JSON-like data.
 - Used by the Position Tracker to persist vehicle position history so it survives pod restarts.
