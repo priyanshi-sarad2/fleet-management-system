@@ -10,6 +10,8 @@ The idea is simple:
 - Every few seconds the vehicle reports its position (latitude and longitude) back to a central server.
 - The system stores that data, works out things like the vehicle's speed, and shows everything live on a map in the browser.
 
+![Fleet Management System overview — vehicles reporting their positions to a central server](docs/images/fleet-overview.png)
+
 Since there are no real trucks in this demo, the vehicle movement is simulated by one of the services (the Position Simulator), which replays real GPS tracks from data files.
 
 The whole thing is built as a microservices architecture (instead of one big monolith — see [Concepts & Design Decisions](#concepts--design-decisions) below), packaged into Docker containers, and deployed on Kubernetes (AWS EKS).
