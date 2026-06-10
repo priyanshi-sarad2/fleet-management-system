@@ -85,7 +85,7 @@ This is the most important microservice and does the real heavy lifting.
 
 Storing history:
 
-- The position history needs to be saved somewhere so it survives restarts. Originally it was kept in-memory (RAM), but that is not persistent — it's lost whenever the pod is deleted/recreated, and the service can also run out of RAM.
+- The position history needs to be saved somewhere so it survives restarts. Originally it was kept in-memory (RAM), but that is not persistent.
 - So the tracker stores history in MongoDB instead.
 - The data is just a large collection of JSON-like documents with nothing relational about it, which makes MongoDB (a simple document database) a good fit.
 
