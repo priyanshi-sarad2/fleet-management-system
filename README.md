@@ -33,6 +33,7 @@ The traditional architecture is called a **monolith** — the entire system is d
 - It becomes harder to change one business area without **accidentally breaking another**.
 - As it grows, **multiple teams** end up working on the same application and start cutting across each other — changing the inventory means consulting other colleagues so you don't break their work.
 - All the code is combined and **deployed as one application**, so shipping a single change means **coordinating and releasing the entire monolith** — which is slow.
+  - For example, if I have to deploy a new change in **inventory**, I can't just ship that on its own — I have to wait, coordinate with other colleagues, and release the changes as one whole application, which is slow.
 
 ### Microservices
 
