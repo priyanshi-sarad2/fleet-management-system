@@ -25,12 +25,6 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
                           API Gateway  ──>  Webapp (browser map)
 ```
 
-1. The Position Simulator pretends to be the moving vehicles and keeps sending their positions to a queue.
-2. The Queue (ActiveMQ) holds those position messages so services stay decoupled.
-3. The Position Tracker reads messages off the queue, calculates speed, stores history in MongoDB, and exposes a REST API.
-4. The API Gateway is the single entry point the frontend talks to; it forwards requests to the right backend service.
-5. The Webapp (Angular) shows the vehicles moving live on a map, with a list and route history.
-
 #### The 5 Microservices
 
 | Service | Tech |
@@ -40,6 +34,12 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
 | **Position Tracker** | Spring Boot + MongoDB |
 | **API Gateway** | Spring Boot + Feign + Hystrix |
 | **Webapp** | Angular 6 + Leaflet + nginx |
+
+1. The Position Simulator pretends to be the moving vehicles and keeps sending their positions to a queue.
+2. The Queue (ActiveMQ) holds those position messages so services stay decoupled.
+3. The Position Tracker reads messages off the queue, calculates speed, stores history in MongoDB, and exposes a REST API.
+4. The API Gateway is the single entry point the frontend talks to; it forwards requests to the right backend service.
+5. The Webapp (Angular) shows the vehicles moving live on a map, with a list and route history.
 
 ---
 
