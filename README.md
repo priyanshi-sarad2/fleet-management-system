@@ -115,12 +115,6 @@ This is the user-facing part — a JavaScript single-page app built with Angular
 - When you select a vehicle, it draws the route history — the path the vehicle took from its start point to its current position.
 - It only communicates with the API Gateway, never with the backend microservices directly.
 
-## MongoDB
-
-- A simple document database that easily stores JSON-like data.
-- Used by the Position Tracker to persist vehicle position history so it survives pod restarts.
-- In Kubernetes, a pod's local data is lost when the pod is destroyed, so this data is made durable using persistent volumes (backed by AWS EBS in the cloud deployment).
-
 ---
 
 # Concepts & Design Decisions
