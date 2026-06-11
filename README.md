@@ -673,7 +673,7 @@ EKS uses **two separate IAM roles** — one for the **control plane** and one fo
   - `AmazonEKS_CNI_Policy` — lets the VPC CNI assign VPC IPs / ENIs to pods.
   - `AmazonEC2ContainerRegistryReadOnly` — lets nodes pull container images from ECR.
 
-So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images. (These are different from **IRSA** below, which gives individual *pods* their own roles.)
+So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images.
 
 ## Choosing the node group instance type and min/max/desired size (pod limits)
 
