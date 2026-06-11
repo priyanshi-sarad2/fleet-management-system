@@ -3,8 +3,8 @@ project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
 
-# Application services that each get their own ECR repository
-ecr_apps = ["api-gateway", "position-simulator", "position-tracker"]
+# Application services — each gets its own ECR repository
+apps = ["api-gateway", "position-simulator", "position-tracker"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 

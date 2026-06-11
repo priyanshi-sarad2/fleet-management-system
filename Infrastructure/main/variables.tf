@@ -21,7 +21,7 @@ variable "account_id" {
   type        = string
 }
 
-variable "ecr_apps" {
+variable "apps" {
   description = "Application services that each get their own ECR repository (one repo is created per name)"
   type        = list(string)
   default     = []

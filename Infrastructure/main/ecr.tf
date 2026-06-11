@@ -2,7 +2,7 @@
 
 module "ecr" {
   source   = "../modules/ecr"
-  for_each = toset(var.ecr_apps)
+  for_each = toset(var.apps)
 
   create_ecr_repository = var.create_ecr_repository
   name                  = var.project_name
