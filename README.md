@@ -194,7 +194,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
-#### AWS Services
+#### AWS and Other Services
 
 | Service | Why it's used |
 |---------|---------------|
