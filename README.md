@@ -493,7 +493,20 @@ Both the Position Simulator and the Position Tracker connect to the **same** bro
 | `ACTIVEMQ_USER` | The application username (`fleetman-app`) |
 | `ACTIVEMQ_PASSWORD` | The application user's password (read from SSM) |
 
-In the app config these map to `spring.activemq.broker-url`, `spring.activemq.user`, and `spring.activemq.password`. If they aren't set, the apps fall back to the old in-cluster broker URL with no credentials (used for local development).
+These are configured in each service's properties file:
+
+- `k8s-fleetman-position-simulator/src/main/resources/application-production-microservice.properties`
+- `k8s-fleetman-position-tracker/src/main/resources/application-production-microservice.properties`
+
+Both files have the same three lines, each reading from an environment variable:
+
+```properties
+spring.activemq.broker-url=${ACTIVEMQ_BROKER_URL:tcp://fleetman-queue.default.svc.cluster.local:61616}
+spring.activemq.user=${ACTIVEMQ_USER:}
+spring.activemq.password=${ACTIVEMQ_PASSWORD:}
+```
+
+If the env vars aren't set, the apps fall back to the old in-cluster broker URL with no credentials (used for local development).
 
 ### Getting the broker credentials
 
