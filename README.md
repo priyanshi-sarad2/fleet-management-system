@@ -625,3 +625,19 @@ flowchart LR
     CP -. "managed by AWS" .- CPENI
     CPENI <-->|"bi-directional traffic"| NODES
 ```
+
+## How users access the cluster (public and private)
+
+To run `kubectl` (or Terraform) against the cluster, you connect to the cluster's **API server endpoint**. EKS can expose that endpoint in two ways — and you can enable either or both.
+
+**Public endpoint** — the cluster gets a **public DNS / HTTPS endpoint**, so you can reach the API server from outside the VPC (e.g. from your local machine). When public access is enabled you can also restrict it with a **CIDR allowlist** — `0.0.0.0/0` to allow from anywhere, or a specific IP (like your office/home IP) to lock it down.
+
+**Private endpoint** — the API server is reachable only via a **private DNS endpoint inside the VPC**. To use `kubectl` from outside, you go through a **bastion / jump host** in a public subnet (or a VPN/SSM tunnel). This is the more secure option and is **recommended for production**.
+
+**Worker nodes:** because the private endpoint is enabled in this setup, the worker nodes always talk to the control plane over the **private endpoint**, keeping that traffic inside the VPC.
+
+**My setup:** for simplicity, I enable **both** the public and private endpoints, with the public endpoint open to `0.0.0.0/0`, so I can run `kubectl` from my local machine.
+
+- The public HTTPS endpoint is the `server:` value in the kubeconfig, and the cluster's CA is the `certificate-authority-data:` value — so the cluster API is accessed over **HTTPS, authenticated with TLS certificates**.
+
+**For production:** a **private-only endpoint accessed through a bastion host** is preferred. If public access is ever needed, the CIDR should be restricted to specific IPs rather than left open to `0.0.0.0/0`.
