@@ -204,10 +204,12 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
+| ACM | Provisions/manages the TLS certificate for HTTPS (used by the load balancer and CloudFront) |
 | Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
 | CloudFront | CDN in front of the main webapp |
 | CloudWatch | Stores and views logs |
 | WAF | Web Application Firewall to protect the application |
+| Helm | Kubernetes package manager — used to install cluster add-ons like the AWS Load Balancer Controller |
 
 #### IAM
 
