@@ -300,6 +300,18 @@ variable "mq_allowed_ingress_ports" {
   default     = []
 }
 
+variable "mq_admin_user" {
+  description = "Amazon MQ admin username (password auto-generated into SSM)"
+  type        = list(string)
+  default     = []
+}
+
+variable "mq_application_user" {
+  description = "Amazon MQ application username used by the apps (password auto-generated into SSM)"
+  type        = list(string)
+  default     = []
+}
+
 ######## EKS Managed Node Group ########
 
 variable "create_eks_managed_node_group" {

@@ -40,3 +40,15 @@ variable "project_name" {
   type        = string
   description = "Project name, used for tagging"
 }
+
+variable "mq_admin_user" {
+  type        = list(string)
+  description = "Admin username. If empty, the module generates one. Password is auto-generated and stored in SSM."
+  default     = []
+}
+
+variable "mq_application_user" {
+  type        = list(string)
+  description = "Application username used by the apps. If empty, the module generates one. Password is auto-generated and stored in SSM."
+  default     = []
+}

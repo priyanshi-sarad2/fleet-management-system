@@ -15,4 +15,6 @@ module "amazon-mq" {
   host_instance_type    = var.mq_host_instance_type
   allowed_ingress_ports = var.mq_allowed_ingress_ports
 
+  mq_admin_user       = var.mq_admin_user
+  mq_application_user  = var.mq_application_user
 }
