@@ -209,6 +209,12 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | MongoDB Atlas | Managed MongoDB for storing vehicle position history |
 | WAF | Web Application Firewall to protect the application |
 
+### IAM
+
+| User | Purpose |
+|------|---------|
+| devops | Used for infrastructure creation via Terraform |
+
 ### Inside the VPC
 
 | Component | Why it's used |
