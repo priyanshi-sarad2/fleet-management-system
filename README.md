@@ -492,3 +492,18 @@ Both the Position Simulator and the Position Tracker connect to the **same** bro
 | `ACTIVEMQ_PASSWORD` | The application user's password (read from SSM) |
 
 In the app config these map to `spring.activemq.broker-url`, `spring.activemq.user`, and `spring.activemq.password`. If they aren't set, the apps fall back to the old in-cluster broker URL with no credentials (used for local development).
+
+### Getting the broker credentials
+
+The broker passwords are auto-generated and stored in **SSM Parameter Store** (as encrypted `SecureString`s), so they never live in the repo. Retrieve the application user's password with:
+
+```bash
+aws ssm get-parameter \
+  --name "/mq/mq_application_password" \
+  --with-decryption \
+  --query "Parameter.Value" \
+  --output text \
+  --profile fleetman-prod --region us-east-1
+```
+
+For the admin password (web console), use `/mq/mq_admin_password` instead. The `--with-decryption` flag is required because the values are stored as encrypted `SecureString`s. The usernames are stored alongside them at `/mq/mq_application_username` and `/mq/mq_admin_username`.
