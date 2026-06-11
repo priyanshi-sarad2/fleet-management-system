@@ -519,3 +519,17 @@ For the admin password (web console), use `/mq/mq_admin_password` instead. The `
 **Why MongoDB for this project?** The Position Tracker needs to store the **history of where every vehicle has been**. Each record is a simple JSON-like document — vehicle name, latitude, longitude, timestamp, and speed. This history is just a large, ever-growing collection of such documents with nothing relational about it, so a document database is a natural fit. It also lets the tracker keep the history **durably** instead of in memory (which is lost whenever the pod restarts).
 
 **Why MongoDB Atlas?** Atlas is MongoDB's fully-managed cloud service. Rather than running and maintaining MongoDB ourselves inside the cluster — handling storage, backups, upgrades, and availability — Atlas manages all of that for us, and the Position Tracker simply connects to it.
+
+### How the Position Tracker connects
+
+The connection is configured in the Position Tracker's properties file:
+
+`k8s-fleetman-position-tracker/src/main/resources/application-production-microservice.properties`
+
+```properties
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://fleetman-mongodb.default.svc.cluster.local:27017/fleetman}
+```
+
+- The URI comes from the **`MONGODB_URI`** environment variable, supplied to the pod (ideally from a Kubernetes Secret), so the connection string — which contains the password — never lives in the repo.
+- For Atlas, `MONGODB_URI` is set to the SRV connection string, e.g. `mongodb+srv://fleetman:<password>@fleetman.xxxxx.mongodb.net/fleetman?appName=fleetman`.
+- If `MONGODB_URI` isn't set, it falls back to the in-cluster MongoDB URL, which is handy for local development.
