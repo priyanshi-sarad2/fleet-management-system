@@ -546,3 +546,17 @@ spring.data.mongodb.uri=${MONGODB_URI:mongodb://fleetman-mongodb.default.svc.clu
 - The URI comes from the **`MONGODB_URI`** environment variable, supplied to the pod (ideally from a Kubernetes Secret), so the connection string — which contains the password — never lives in the repo.
 - For Atlas, `MONGODB_URI` is set to the SRV connection string, e.g. `mongodb+srv://fleetman:<password>@fleetman.xxxxx.mongodb.net/fleetman?appName=fleetman`.
 - If `MONGODB_URI` isn't set, it falls back to the in-cluster MongoDB URL, which is handy for local development.
+
+### Making the MongoDB connection secure
+
+Atlas is reachable over the internet, so by default anyone with the credentials could try to connect. To lock it down, Atlas has a **Network Access → IP Access List**, where we add **only our VPC's NAT gateway Elastic IP**.
+
+Why the NAT Elastic IP?
+
+- The Position Tracker pods run in **private subnets**, which have no direct internet access.
+- To reach Atlas (which lives outside the VPC, on the internet), the pods make an **outbound** connection — and since they're in private subnets, that traffic goes out through the **NAT gateway**.
+- The NAT gateway uses a fixed **Elastic IP**, so from Atlas's point of view, every connection from our cluster appears to come from that one IP. The Elastic IP matters because it is **static** — it stays the same, so it's safe to allowlist.
+
+By adding only this IP to the access list, the Atlas cluster can **only be reached from our cluster's NAT IP** — nothing else on the internet can connect to it, even with the password.
+
+![MongoDB Atlas IP Access List — only the fleetman VPC NAT gateway Elastic IP is allowed](docs/images/mongodb-ip-access-list.png)
