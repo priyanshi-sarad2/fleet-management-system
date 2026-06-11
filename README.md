@@ -233,8 +233,6 @@ EKS add-ons installed:
 | Service | Deployment |
 |---------|-----------|
 | Webapp | Static SPA served via CloudFront + S3 |
-| Position Simulator | Kubernetes Deployment in the EKS cluster |
-| Position Tracker | Kubernetes Deployment in the EKS cluster |
-| API Gateway | Kubernetes Deployment in the EKS cluster |
+| Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the EKS cluster |
 | Queue | Amazon MQ (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | MongoDB Atlas (managed) |
