@@ -202,7 +202,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
 | [ECR](#ecr) | Stores the Docker images for our services |
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
-| MongoDB Atlas | Managed MongoDB for storing vehicle position history |
+| [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
 | CloudFront | CDN in front of the main webapp |
@@ -507,3 +507,7 @@ aws ssm get-parameter \
 ```
 
 For the admin password (web console), use `/mq/mq_admin_password` instead. The `--with-decryption` flag is required because the values are stored as encrypted `SecureString`s. The usernames are stored alongside them at `/mq/mq_application_username` and `/mq/mq_admin_username`.
+
+---
+
+# MongoDB Atlas
