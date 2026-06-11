@@ -261,7 +261,7 @@ Terraform works on the idea of **desired state vs current state**:
 
 This gives us infrastructure that is reproducible, version-controlled, reviewable, and easy to tear down and recreate — and it avoids configuration drift, because the state file is the single source of truth for what Terraform manages.
 
-## Directory Structure
+### Directory Structure
 
 The `Infrastructure/` directory is organised into a root module and reusable child modules (only the key files are shown):
 
@@ -293,7 +293,7 @@ Infrastructure/
 
 The root module (`main/`) wires everything together by calling the child modules under `modules/`, passing in the values from `prod-terraform.tfvars`.
 
-## Root Module vs Child Modules
+### Root Module vs Child Modules
 
 A quick note on terminology, since this setup has modules calling other modules:
 
