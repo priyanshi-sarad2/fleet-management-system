@@ -3,6 +3,10 @@
 module "mq-broker" {
   source        = "cloudposse/mq-broker/aws"
   version       = "3.6.0"
+
+  namespace = var.project_name # e.g. "fleetman"
+  name      = "mq"             # broker name becomes "<namespace>-mq", e.g. "fleetman-mq"
+
   vpc_id        = var.vpc_id
   subnet_ids    = var.subnet_ids
 
