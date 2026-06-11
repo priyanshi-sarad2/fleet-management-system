@@ -26,6 +26,14 @@ create_aws_prometheus_adot_writer_ecr = false
 ecr_retention_count = 5
 
 
+########    Amazon MQ    ########
+mq_engine_type        = "ActiveMQ"
+mq_engine_version     = "5.17.6"
+mq_host_instance_type = "mq.t3.micro"
+# 61617 = OpenWire over TLS (JMS). Add 8162 if you need the web console.
+mq_allowed_ingress_ports = [61617]
+
+
 ########    VPC - Public and Private Subnets    ########
 availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d"]
 cidr               = "10.2.0.0/16"

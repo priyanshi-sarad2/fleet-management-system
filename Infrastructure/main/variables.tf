@@ -268,6 +268,32 @@ variable "create_aws_prometheus_adot_writer_ecr" {
   default     = false
 }
 
+######## Amazon MQ ########
+
+variable "mq_engine_type" {
+  description = "The Amazon MQ broker engine type (e.g. ActiveMQ)"
+  type        = string
+  default     = "ActiveMQ"
+}
+
+variable "mq_engine_version" {
+  description = "The version of the Amazon MQ broker engine"
+  type        = string
+  default     = "5.17.6"
+}
+
+variable "mq_host_instance_type" {
+  description = "The Amazon MQ broker instance type (e.g. mq.t3.micro)"
+  type        = string
+  default     = "mq.t3.micro"
+}
+
+variable "mq_allowed_ingress_ports" {
+  description = "TCP ports to allow into the Amazon MQ broker's security group"
+  type        = list(number)
+  default     = []
+}
+
 ######## EKS Managed Node Group ########
 
 variable "create_eks_managed_node_group" {
