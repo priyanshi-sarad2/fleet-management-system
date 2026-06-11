@@ -465,3 +465,7 @@ Looking at the lifecycle policy rule above:
 - The rule type is "more than N" (`imageCountMoreThan`), so once a repository has **more than 5** such tagged images, the rule's action is to `expire` (delete) the **oldest** images beyond the newest 5.
 
 How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 are kept. The moment you push `v6`, the repository now has 6 images, which is more than 5 — so the oldest one (`v1`) is automatically expired, always leaving the 5 most recent versions.
+
+---
+
+# Deploying the Queue — Amazon MQ
