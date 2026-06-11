@@ -588,8 +588,6 @@ The data plane is the **worker nodes where the pods actually run**. EKS gives th
 
 This project uses the **AWS-managed node group**: AWS handles the node provisioning and lifecycle, while we just declare the instance type and the min/max/desired sizes (in `prod-terraform.tfvars`). The node group is created automatically whenever the EKS cluster is created.
 
----
-
 ## Control plane ENI, data plane ENI, and bi-directional networking
 
 **ENI = Elastic Network Interface.** Think of an ENI as a **virtual network card** for a server. It plugs the server into a subnet and gives it an **IP address** — its identity on the network. Anything in a VPC that sends or receives traffic does so through an ENI.
