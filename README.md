@@ -456,7 +456,9 @@ We use **3 ECR repositories — one for each of the 3 services that run in the c
 
 Since this is a production setup, we don't want to keep every image forever — old images pile up and add storage cost. So each repository has a **lifecycle policy** that keeps only the most recent images and automatically deletes the older ones.
 
-Looking at the policy in the module:
+![ECR lifecycle policy rule — keep the last 5 tagged images (tag filter "v"), action Expire](docs/images/ecr-lifecycle-policy.png)
+
+Looking at the lifecycle policy rule above:
 
 - We keep the **latest 5 images**. Five is a sensible production default — enough history to roll back a few versions if a deploy goes wrong, without letting images grow unbounded.
 - Only images whose tag starts with **`v`** are counted (releases are tagged `v1`, `v2`, `v3`, …). This is the `tagPrefixList = ["v"]` part of the rule.
