@@ -438,4 +438,8 @@ A route table is a set of rules that decides where network traffic is sent. Each
 
 **Public route table** — associated with the public subnets. It has a route that sends internet-bound traffic (`0.0.0.0/0`) to the **internet gateway**, which is what makes those subnets "public".
 
+![Public route table routes — 0.0.0.0/0 points to the internet gateway, 10.2.0.0/16 is local](docs/images/route-table-public.png)
+
 **Private route table** — associated with the private subnets. Its internet-bound traffic (`0.0.0.0/0`) is sent to the **NAT gateway** instead. This is how private resources get outbound internet access without being directly exposed to the internet.
+
+![Private route table routes — 0.0.0.0/0 points to the NAT gateway, 10.2.0.0/16 is local](docs/images/route-table-private.png)
