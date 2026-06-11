@@ -343,7 +343,7 @@ provider "aws" {
 
 ### Backend — prod-backend.tfbackend
 
-The S3 bucket that holds the state must be created beforehand — Terraform can't create the bucket it's going to store its own state in.
+The S3 bucket that holds the state must be created beforehand.
 
 ```hcl
 bucket  = "fleetman-tf-state"
