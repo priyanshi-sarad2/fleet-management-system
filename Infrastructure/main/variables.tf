@@ -285,7 +285,7 @@ variable "mq_engine_type" {
 variable "mq_engine_version" {
   description = "The version of the Amazon MQ broker engine"
   type        = string
-  default     = "5.17.6"
+  default     = "5.19"
 }
 
 variable "mq_host_instance_type" {

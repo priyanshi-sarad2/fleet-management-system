@@ -7,7 +7,7 @@ variable "engine_type" {
 variable "engine_version" {
   type        = string
   description = "The version of the broker engine."
-  default     = "5.17.6"
+  default     = "5.19"
 }
 
 variable "host_instance_type" {
