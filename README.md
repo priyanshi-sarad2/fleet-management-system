@@ -640,7 +640,7 @@ To run `kubectl` against the cluster, you connect to the cluster's **kube-api se
 
 **For production:** a **private-only endpoint accessed through a bastion host** is preferred. If public access is ever needed, the CIDR should be restricted to specific IPs rather than left open to `0.0.0.0/0`.
 
-### How EKS decides who can access the cluster (authentication mode)
+## How EKS decides who can access the cluster (authentication mode)
 
 `authentication_mode` controls **how EKS decides who is allowed to access the cluster**. It has three possible values:
 
