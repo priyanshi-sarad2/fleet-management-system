@@ -574,7 +574,7 @@ An EKS cluster has two major components: the **control plane** and the **data pl
 
 ### Control plane
 
-The control plane is **completely managed by AWS** — we don't provision, access (SSH into), or scale it ourselves. AWS runs it on its **own separate infrastructure** (a separate AWS-managed account/VPC, not our VPC) and takes care of the Kubernetes API server, etcd, scheduler, and controller manager, along with their high availability and patching.
+The control plane is **completely managed by AWS** — we don't provision, access (SSH into), or scale it ourselves. AWS runs it on its **own separate infrastructure** (a separate AWS-managed account/VPC, not our VPC) and takes care of the kube-api server, etcd, scheduler, and controller manager, along with their high availability and patching.
 
 A key billing point: the control plane has a **flat hourly rate**. Even if we have **zero worker nodes** and aren't running any workloads, we're charged for the control plane for as long as the cluster exists. So a cluster that's just sitting idle still costs money — worth remembering when you spin clusters up for practice.
 
@@ -614,7 +614,7 @@ The diagram below shows the idea: the control plane lives in AWS's own network, 
 ```mermaid
 flowchart LR
     subgraph AWSNET["AWS-managed network"]
-        CP["Control plane<br/>(API server, etcd, scheduler)"]
+        CP["Control plane<br/>(kube-api server, etcd, scheduler)"]
     end
 
     subgraph OURVPC["Our VPC — private subnets"]
@@ -628,11 +628,11 @@ flowchart LR
 
 ## How users access the cluster (public and private)
 
-To run `kubectl` against the cluster, you connect to the cluster's **API server endpoint**. EKS can expose that endpoint in two ways — and you can enable either or both.
+To run `kubectl` against the cluster, you connect to the cluster's **kube-api server endpoint**. EKS can expose that endpoint in two ways — and you can enable either or both.
 
-**Public endpoint** — the cluster gets a **public DNS / HTTPS endpoint**, so you can reach the API server from outside the VPC (e.g. from your local machine). When public access is enabled you can also restrict it with a **CIDR allowlist** — `0.0.0.0/0` to allow from anywhere, or a specific IP (like your office/home IP) to lock it down.
+**Public endpoint** — the cluster gets a **public DNS / HTTPS endpoint**, so you can reach the kube-api server from outside the VPC (e.g. from your local machine). When public access is enabled you can also restrict it with a **CIDR allowlist** — `0.0.0.0/0` to allow from anywhere, or a specific IP (like your office/home IP) to lock it down.
 
-**Private endpoint** — the API server is reachable only via a **private DNS endpoint inside the VPC**. To use `kubectl` from outside, you go through a **bastion / jump host** in a public subnet (or a VPN/SSM tunnel). This is the more secure option and is **recommended for production**.
+**Private endpoint** — the kube-api server is reachable only via a **private DNS endpoint inside the VPC**. To use `kubectl` from outside, you go through a **bastion / jump host** in a public subnet (or a VPN/SSM tunnel). This is the more secure option and is **recommended for production**.
 
 **Worker nodes:** because the private endpoint is enabled in this setup, the worker nodes always talk to the control plane over the **private endpoint**, keeping that traffic inside the VPC.
 
