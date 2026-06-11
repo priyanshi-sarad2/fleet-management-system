@@ -294,3 +294,22 @@ Infrastructure/
 ```
 
 The root module (`main/`) wires everything together by calling the child modules under `modules/`, passing in the values from `prod-terraform.tfvars`.
+
+## Root Module vs Child Modules
+
+A quick note on terminology, since this setup has modules calling other modules:
+
+- **Root module** — the top-level folder where you actually run Terraform. Here that's `Infrastructure/main/`. There is only ever one root module.
+- **Child module** — any module that is called by another module. Everything under `modules/` is a child module.
+
+In this project there's an extra layer, because my own modules wrap the official ones:
+
+```
+root (main/)  →  my module (modules/vpc)  →  official module (terraform-aws-modules/vpc/aws)
+```
+
+- `main/` is the **root**.
+- `modules/vpc` is a **child** of the root — and at the same time it's the **parent (caller)** of the official module.
+- The official `terraform-aws-modules/vpc/aws` is a **nested child** (a child of my child).
+
+So "root" only ever refers to `main/`; anything inside `modules/` is a child, no matter how many layers deep the calls go.
