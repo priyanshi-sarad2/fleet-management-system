@@ -487,7 +487,7 @@ Both the Position Simulator and the Position Tracker connect to the **same** bro
 
 | Variable | Purpose |
 |----------|---------|
-| `ACTIVEMQ_BROKER_URL` | The broker's OpenWire TLS endpoint, e.g. `ssl://b-7541b917-275c-49a9-af94-2a237c1d5201-1.mq.us-east-1.amazonaws.com:61617` |
+| `ACTIVEMQ_BROKER_URL` | The broker's OpenWire TLS endpoint, e.g. `ssl://b-xxxx-xxxx.mq.us-east-1.amazonaws.com:61617` |
 | `ACTIVEMQ_USER` | The application username (`fleetman-app`) |
 | `ACTIVEMQ_PASSWORD` | The application user's password (read from SSM) |
 
