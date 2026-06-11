@@ -2,13 +2,13 @@ name         = "fleet-management-system"
 project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
-# account_id is provided via the TF_VAR_account_id environment variable (not committed here).
+# account_id is provided via the TF_VAR_account_id environment variable
 
 
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = false
+create_vpc                            = true
 create_eks_cluster                    = false
 create_eks_managed_node_group         = false
 create_eks_ebs_csi_driver_addon       = false
