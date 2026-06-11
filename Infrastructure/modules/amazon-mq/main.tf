@@ -12,6 +12,7 @@ module "mq-broker" {
   subnet_ids    = var.subnet_ids
 
   allowed_ingress_ports = var.allowed_ingress_ports
+  allowed_cidr_blocks   = var.allowed_cidr_blocks
 
   engine_type = var.engine_type
   engine_version = var.engine_version
