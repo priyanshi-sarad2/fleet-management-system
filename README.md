@@ -562,3 +562,7 @@ The IP is added as a **`/32`** entry (e.g. `<nat-eip>/32`). A `/32` CIDR means *
 By adding only this IP to the access list, the Atlas cluster can **only be reached from our cluster's NAT IP** — nothing else on the internet can connect to it, even with the password.
 
 ![MongoDB Atlas IP Access List — only the fleetman VPC NAT gateway Elastic IP is allowed](docs/images/mongodb-ip-access-list.png)
+
+---
+
+# Amazon Elastic Kubernetes Service (EKS)
