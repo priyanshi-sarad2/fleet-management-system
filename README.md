@@ -177,6 +177,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 | Tool | Why it's needed |
 |------|-----------------|
+| Terraform | To provision the AWS infrastructure as code |
 | AWS CLI | To configure AWS credentials/profiles and talk to AWS |
 | kubectl | To interact with the Kubernetes (EKS) cluster |
 | eksctl | To create and manage EKS resources (e.g. IAM service accounts) |
