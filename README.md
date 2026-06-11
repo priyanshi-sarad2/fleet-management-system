@@ -227,6 +227,15 @@ EKS add-ons installed:
 - vpc-cni — assigns VPC IP addresses to pods
 - ebs-csi-driver — provisions EBS volumes for persistent storage
 
+### S3
+
+We need two S3 buckets:
+
+| Bucket | Purpose | Created by |
+|--------|---------|-----------|
+| `fleetman-tf-state` | Stores the Terraform state file | Manually (it must already exist before Terraform can use it as its backend) |
+| `fleetman-codepipeline-artifacts` | Stores the artifacts passed between the stages of the AWS CodePipeline | Terraform |
+
 ## How Each Service Is Deployed
 
 | Service | Deployment |
