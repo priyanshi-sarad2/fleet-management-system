@@ -398,6 +398,8 @@ A key thing about a VPC is that every resource inside it can talk to every other
 
 For this project we create our own dedicated VPC. One thing worth noting: the **EKS control plane** runs in a **separate, AWS-managed VPC** that we don't see or control. Only the **data plane** — our worker nodes and the application pods — is deployed into the VPC we create here.
 
+![VPC resource map — the fleetman-prod VPC with its 6 subnets across 4 AZs and 3 route tables](docs/images/vpc-resource-map.png)
+
 ### Subnets, CIDR and Availability Zones
 
 A subnet is a smaller slice of the VPC's IP range. Two ideas make this clearer:
