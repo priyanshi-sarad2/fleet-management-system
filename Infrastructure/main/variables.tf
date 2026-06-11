@@ -314,12 +314,6 @@ variable "mq_application_user" {
 
 ######## EKS Managed Node Group ########
 
-variable "create_eks_managed_node_group" {
-  description = "Controls if the EKS managed node group should be created"
-  type        = bool
-  default     = true
-}
-
 variable "node_group_instance_types" {
   description = "Instance types for the EKS managed node group"
   type        = list(string)

@@ -103,7 +103,7 @@ module "eks" {
   ###############    EKS Managed Node Groups    ###############
   eks_managed_node_groups = {
     fleetman-node-group = {
-      create         = var.create_eks_managed_node_group
+      create         = var.create_eks_cluster
       name           = "${var.project_name}-eks-node-group"
       instance_types = var.node_group_instance_types
       min_size       = var.node_group_min_size
