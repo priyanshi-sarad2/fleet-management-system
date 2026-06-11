@@ -250,3 +250,47 @@ We need two S3 buckets:
 ---
 
 # Using Terraform for Infra Creation
+
+## Why Terraform
+
+Terraform lets us define all of the AWS infrastructure as code instead of clicking around the console by hand. The biggest reason I chose it is how it manages **state**.
+
+Terraform works on the idea of **desired state vs current state**:
+
+- The **desired state** is what we declare in our `.tf` files — the infrastructure we *want* to exist.
+- The **current state** is what actually exists, which Terraform tracks in a **state file**.
+- When we run `terraform plan` / `apply`, Terraform compares the two and works out the difference, then makes only the changes needed to bring the real infrastructure in line with our code (creating, updating, or destroying resources as required).
+
+This gives us infrastructure that is reproducible, version-controlled, reviewable, and easy to tear down and recreate — and it avoids configuration drift, because the state file is the single source of truth for what Terraform manages.
+
+## Directory Structure
+
+The `Infrastructure/` directory is organised into a root module and reusable child modules (only the key files are shown):
+
+```
+Infrastructure/
+├── main/                            # Root module — run terraform from here
+│   ├── init.tf                      # Provider + version setup
+│   ├── backend.tf                   # Remote S3 backend declaration
+│   ├── variables.tf                 # Variable definitions
+│   ├── prod-terraform.tfvars        # Variable values for the prod environment
+│   ├── backends/
+│   │   └── prod-backend.tfbackend   # Backend config (state bucket, key, region)
+│   ├── vpc.tf                       # Calls the vpc module
+│   ├── eks.tf                       # Calls the eks module
+│   ├── ecr.tf                       # Calls the ecr module
+│   ├── cloudfront.tf
+│   ├── monitoring.tf
+│   └── output.tf
+│
+└── modules/                         # Reusable child modules
+    ├── vpc/
+    ├── eks/
+    ├── eks-addons/
+    ├── ecr/
+    ├── cloudfront/
+    ├── iam/
+    └── monitoring/                  # each module: main.tf, variable.tf, output.tf
+```
+
+The root module (`main/`) wires everything together by calling the child modules under `modules/`, passing in the values from `prod-terraform.tfvars`.
