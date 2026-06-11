@@ -639,3 +639,18 @@ To run `kubectl` against the cluster, you connect to the cluster's **kube-api se
 **My setup:** for simplicity, I enable **both** the public and private endpoints, with the public endpoint open to `0.0.0.0/0`, so I can run `kubectl` from my local machine.
 
 **For production:** a **private-only endpoint accessed through a bastion host** is preferred. If public access is ever needed, the CIDR should be restricted to specific IPs rather than left open to `0.0.0.0/0`.
+
+## How EKS decides who can access the cluster (authentication mode)
+
+`authentication_mode` controls **how EKS decides who is allowed to access the cluster**. It has three possible values:
+
+- **`CONFIG_MAP`** — the old way: you edit an in-cluster `aws-auth` ConfigMap to map IAM users/roles to Kubernetes groups.
+- **`API`** (the new, recommended way — used here) — you create **EKS Access Entries** for an IAM user/role and attach an EKS access policy (e.g. Admin or View). No `aws-auth` editing: you just tell AWS *who* can access (the Access Entry) and *at what level* (the access policy).
+- **`API_AND_CONFIG_MAP`** — a hybrid where both Access Entries and the `aws-auth` ConfigMap work together. Mainly useful during a migration.
+
+**Key point:** having admin on the **AWS account** does **not** automatically grant admin on the **EKS cluster**. Cluster access is separate and must be granted explicitly through Access Entries.
+
+How access is granted in this project:
+
+- **`enable_cluster_creator_admin_permissions = true`** — automatically gives the IAM identity that runs Terraform (my `devops` user, the cluster creator) **admin access** to the cluster by creating an Access Entry for it. Without this, even the creator wouldn't be able to access the cluster.
+- **`access_entries`** — used to grant **additional** IAM users/roles access. For example, the AWS account **root user** has full account access but **no** cluster access by default, so an Access Entry is added for it here. Any other users/roles that need cluster access are added the same way.
