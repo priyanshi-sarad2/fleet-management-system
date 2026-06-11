@@ -572,13 +572,13 @@ By adding only this IP to the access list, the Atlas cluster can **only be reach
 
 An EKS cluster has two major components: the **control plane** and the **data plane**.
 
-### Control plane
+## Control plane
 
 The control plane is **completely managed by AWS** — we don't provision, access (SSH into), or scale it ourselves. AWS runs it on its **own separate infrastructure** (a separate AWS-managed account/VPC, not our VPC) and takes care of the kube-api server, etcd, scheduler, and controller manager, along with their high availability and patching.
 
 A key billing point: the control plane has a **flat hourly rate**. Even if we have **zero worker nodes** and aren't running any workloads, we're charged for the control plane for as long as the cluster exists. So a cluster that's just sitting idle still costs money — worth remembering when you spin clusters up for practice.
 
-### Data plane
+## Data plane
 
 The data plane is the **worker nodes where the pods actually run**. EKS gives three options for it:
 
@@ -725,9 +725,7 @@ sequenceDiagram
 
 IRSA is used whenever a workload in the cluster needs AWS access. For example, the **AWS Load Balancer Controller** needs ELB/EC2 permissions; or, more simply, if an **application running in a pod needs to read from an S3 bucket**, you give its ServiceAccount an IAM role scoped to just that bucket — so the pod can access that one bucket and nothing else. Each workload gets its own ServiceAccount annotated with a dedicated least-privilege IAM role.
 
----
-
-# Choosing the node group instance type and min/max/desired size (pod limits)
+## Choosing the node group instance type and min/max/desired size (pod limits)
 
 The number of pods a node can run depends on its **instance type** — a bigger instance type allows **more pods** (the limit is tied to how many ENIs/IPs the instance supports for the VPC CNI).
 
