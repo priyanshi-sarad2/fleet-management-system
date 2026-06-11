@@ -390,19 +390,24 @@ terraform apply -var-file=prod-terraform.tfvars
 
 # VPC
 
-EKS gets its own dedicated VPC (a Virtual Private Cloud — a private, isolated network inside AWS), so the cluster is fully network-isolated from everything else.
+A VPC (Virtual Private Cloud) is a private, isolated network inside AWS that we fully control.
 
-A key thing about a VPC is that **every resource inside it can talk to every other resource by default** (subject to security groups and network ACLs). So the EC2 worker nodes, the pods, and other resources in the VPC can reach each other over private IPs without going anywhere near the public internet. The VPC is essentially the private network that holds the whole cluster.
+A key thing about a VPC is that every resource inside it can talk to every other resource over private IPs, simply because they are all part of the same network (subject to security groups and network ACLs) — no traffic needs to go over the public internet for them to reach each other.
 
-Inside the VPC we have:
+For this project we create our own dedicated VPC. One thing worth noting: the **EKS control plane** runs in a **separate, AWS-managed VPC** that we don't see or control. Only the **data plane** — our worker nodes and the application pods — is deployed into the VPC we create here.
 
-### Subnets
+### Subnets, CIDR and Availability Zones
 
-A subnet is just a slice of the VPC's IP range. Each subnet lives in one Availability Zone, and we split them into public and private.
+A subnet is a smaller slice of the VPC's IP range. Two ideas make this clearer:
 
-**Public subnets (2)** — A public subnet is one that has a route to the internet through an internet gateway, so resources placed here can be reached from the internet (and reach out to it). We use the public subnets for the **load balancer** and the **NAT gateway** — things that need to face the internet.
+- **CIDR block** — the range of private IP addresses a network owns. Our VPC is given the CIDR `10.2.0.0/16`, which covers `10.2.0.0` – `10.2.255.255` (around 65,000 addresses). Every subnet then carves out a smaller piece of this range.
+- **Availability Zone (AZ)** — a physically separate data centre within the region. Each subnet lives in exactly one AZ. Spreading subnets across multiple AZs (`us-east-1a`, `1b`, `1c`, `1d`) gives high availability — if one AZ goes down, resources in the others keep running.
 
-**Private subnets (4)** — A private subnet has **no** direct route to the internet. This is where **EKS is deployed and the application pods run**. Keeping the nodes and pods private is more secure, because they cannot be reached directly from the internet — anything coming in has to go through the load balancer in the public subnet first.
+We split the VPC range into public and private subnets, each a `/24` block (256 addresses):
+
+**Public subnets (2)** — `10.2.1.0/24` and `10.2.2.0/24`. A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. We use them for the **load balancer** and the **NAT gateway**.
+
+**Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. This is where the **EKS worker nodes and the application pods run**. Keeping them private is more secure — they cannot be reached directly from the internet, so any incoming traffic has to go through the load balancer in the public subnet first.
 
 ### Internet Gateway
 
