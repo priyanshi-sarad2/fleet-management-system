@@ -628,7 +628,7 @@ flowchart LR
 
 ## How users access the cluster (public and private)
 
-To run `kubectl` (or Terraform) against the cluster, you connect to the cluster's **API server endpoint**. EKS can expose that endpoint in two ways — and you can enable either or both.
+To run `kubectl` against the cluster, you connect to the cluster's **API server endpoint**. EKS can expose that endpoint in two ways — and you can enable either or both.
 
 **Public endpoint** — the cluster gets a **public DNS / HTTPS endpoint**, so you can reach the API server from outside the VPC (e.g. from your local machine). When public access is enabled you can also restrict it with a **CIDR allowlist** — `0.0.0.0/0` to allow from anywhere, or a specific IP (like your office/home IP) to lock it down.
 
