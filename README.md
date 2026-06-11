@@ -656,3 +656,55 @@ How access is granted in this project:
 - **`access_entries`** — used to grant **additional** IAM users/roles access. For example, the AWS account **root user** has full account access but **no** cluster access by default, so an Access Entry is added for it here. Any other users/roles that need cluster access are added the same way.
 
 So if a **developer** needs to access the cluster, we add an **Access Entry for their IAM user/role** here and attach the right access policy (e.g. `View` for read-only, `Admin` for full access). They don't get cluster access just from having an IAM user — it has to be granted explicitly via an Access Entry.
+
+---
+
+# IRSA — IAM Roles for Service Accounts
+
+**What is IRSA?** IRSA lets a Kubernetes **pod get its own AWS permissions through its ServiceAccount**, instead of borrowing the node's IAM role.
+
+- **Without IRSA:** pods inherit AWS permissions from the **EC2 node IAM role**, which is shared by everything on that node and is usually too broad — a security risk.
+- **With IRSA:** each workload gets its **own small IAM role** (least privilege), e.g. "this pod can only read this one S3 bucket."
+
+The whole thing boils down to one chain:
+
+> **ServiceAccount → short-lived token (OIDC/JWT) → AWS STS → temporary AWS credentials for an IAM role**
+
+### The pieces
+
+- **ServiceAccount** — an identity *inside Kubernetes* that pods run as. It is **not** an AWS user, so you can't attach an IAM role to it directly in AWS. Instead you **annotate** it with the role ARN:
+  `eks.amazonaws.com/role-arn: arn:aws:iam::<acct>:role/<role>`
+- **OIDC token (JWT)** — when a pod starts, Kubernetes mounts a **short-lived signed token** into it. The token says: "I am ServiceAccount X in namespace Y", "this token is for audience `sts.amazonaws.com`", and "I expire soon."
+- **IAM OIDC provider** — the EKS cluster exposes an **OIDC issuer URL**. You register an **IAM OIDC provider** in AWS that points to it; this is the **trust bridge** that lets AWS verify the Kubernetes-issued token. (OIDC doesn't turn the ServiceAccount into an AWS object — it just makes the token verifiable.)
+- **AWS STS (Security Token Service)** — the AWS service that hands out **temporary credentials**. The pod calls `AssumeRoleWithWebIdentity` with the JWT + the role ARN; STS verifies it and returns short-lived creds.
+- **`aud` (audience)** — "who is this token for?" Must be `sts.amazonaws.com`, so STS accepts it.
+- **`sub` (subject)** — "who does this token belong to?" It looks like `system:serviceaccount:<namespace>:<serviceaccount>`. The IAM role's **trust policy** uses `sub` to ensure only that **specific ServiceAccount** can assume the role.
+
+### End-to-end flow
+
+1. The EKS cluster has an OIDC issuer URL; enabling IRSA registers an **IAM OIDC provider** for it.
+2. You create an **IAM role** whose trust policy says: *trust tokens from this cluster's OIDC provider, but only if `aud = sts.amazonaws.com` and `sub = system:serviceaccount:<ns>:<name>`.*
+3. You **annotate the ServiceAccount** with that role's ARN.
+4. A pod using that ServiceAccount gets a **short-lived JWT** (mounted via a projected volume).
+5. The AWS SDK in the pod calls **STS `AssumeRoleWithWebIdentity`** with the token and the role ARN.
+6. STS verifies the token (signature via the OIDC provider, plus the `aud` and `sub` checks) and returns **temporary AWS credentials**.
+7. The app uses those temporary credentials to call AWS services.
+
+The result: **pod-level, least-privilege AWS access — without ever using the node's IAM role.**
+
+```mermaid
+sequenceDiagram
+    participant Pod as Pod (ServiceAccount)
+    participant K8s as Kubernetes
+    participant STS as AWS STS
+    participant AWS as AWS service (S3 / ELB / ...)
+    K8s->>Pod: mount short-lived JWT<br/>(aud = sts.amazonaws.com,<br/>sub = system:serviceaccount:ns:sa)
+    Pod->>STS: AssumeRoleWithWebIdentity(role ARN + JWT)
+    STS->>STS: verify token via cluster OIDC provider,<br/>check aud and sub
+    STS-->>Pod: temporary AWS credentials
+    Pod->>AWS: call AWS API with temporary credentials
+```
+
+### Where IRSA is used here
+
+IRSA is used whenever a workload in the cluster needs AWS access — for example the **AWS Load Balancer Controller** (needs ELB/EC2 permissions) and the **Prometheus/ADOT metrics writer** (needs to write to Amazon Managed Prometheus). Each gets its own ServiceAccount annotated with a dedicated least-privilege IAM role.
