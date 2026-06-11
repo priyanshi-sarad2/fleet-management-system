@@ -200,8 +200,8 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 |---------|---------------|
 | EKS cluster | The Kubernetes cluster the whole application is deployed on |
 | [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
+| [ECR](#ecr) | Stores the Docker images for our services |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
-| ECR | Stores the Docker images for our services |
 | Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
 | CloudFront | CDN in front of the main webapp |
 | CloudWatch | Stores and views logs |
@@ -443,3 +443,7 @@ A route table is a set of rules that decides where network traffic is sent. Each
 **Private route table** — associated with the private subnets. Its internet-bound traffic (`0.0.0.0/0`) is sent to the **NAT gateway** instead. This is how private resources get outbound internet access without being directly exposed to the internet.
 
 ![Private route table routes — 0.0.0.0/0 points to the NAT gateway, 10.2.0.0/16 is local](docs/images/route-table-private.png)
+
+---
+
+# ECR
