@@ -164,3 +164,31 @@ Each microservice should be highly cohesive and loosely coupled.
   - They are not loosely coupled — any part of the system, and even other systems, can read and write to them.
 - Each microservice should maintain its own database, and only that microservice can read and write to its own data store.
 - Different microservices can use different types of databases (relational, NoSQL/big-data stores, etc.) as best suits their needs.
+
+---
+
+# Deployment on AWS EKS
+
+## Creating the AWS Infrastructure — Terraform
+
+All of the AWS infrastructure for this project is provisioned with Terraform. The main building blocks are summarised below.
+
+### AWS Services
+
+| Service | Why it's used |
+|---------|---------------|
+| EKS cluster | The Kubernetes cluster the whole application is deployed on |
+| AWS-managed data plane (managed node group) | The worker nodes where our application pods run |
+| ClusterIP service | Service-to-service communication between the microservices inside the cluster |
+| VPC | EKS lives inside its own Virtual Private Cloud (private network) |
+
+### Inside the VPC
+
+| Component | Why it's used |
+|-----------|---------------|
+| 2 public subnets | For the load balancer and the NAT gateway |
+| 4 private subnets | Where EKS is deployed and the application pods run |
+| Internet gateway | Lets resources in the public subnets reach the internet |
+| NAT gateway | Provides outbound internet access for resources in the private subnets |
+| Public route table | Routing for the public subnets (via the internet gateway) |
+| Private route table | Routing for the private subnets (via the NAT gateway) |
