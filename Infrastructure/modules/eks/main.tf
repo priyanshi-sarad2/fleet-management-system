@@ -2,7 +2,7 @@
 
 module "eks" {
   source      = "terraform-aws-modules/eks/aws"
-  version     = "21.15.1"
+  version     = "21.23.0"
   create      = var.create_eks_cluster
   region      = var.eks_region
   name        = var.eks_cluster_name

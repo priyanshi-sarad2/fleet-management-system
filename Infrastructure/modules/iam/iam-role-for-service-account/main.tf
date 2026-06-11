@@ -2,7 +2,7 @@
 
 module "iam_role_for_service_accounts" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
-  version = "6.4.0"
+  version = "6.6.1"
 
   create          = var.create
   region          = var.region
