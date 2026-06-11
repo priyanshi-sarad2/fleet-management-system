@@ -640,7 +640,7 @@ To run `kubectl` against the cluster, you connect to the cluster's **kube-api se
 
 **For production:** a **private-only endpoint accessed through a bastion host** is preferred. If public access is ever needed, the CIDR should be restricted to specific IPs rather than left open to `0.0.0.0/0`.
 
-## How EKS decides who can access the cluster (authentication mode)
+### How EKS decides who can access the cluster (authentication mode)
 
 `authentication_mode` controls **how EKS decides who is allowed to access the cluster**. It has three possible values:
 
@@ -656,8 +656,6 @@ How access is granted in this project:
 - **`access_entries`** — used to grant **additional** IAM users/roles access. For example, the AWS account **root user** has full account access but **no** cluster access by default, so an Access Entry is added for it here. Any other users/roles that need cluster access are added the same way.
 
 So if a **developer** needs to access the cluster, we add an **Access Entry for their IAM user/role** here and attach the right access policy (e.g. `View` for read-only, `Admin` for full access). They don't get cluster access just from having an IAM user — it has to be granted explicitly via an Access Entry.
-
----
 
 # IRSA — IAM Roles for Service Accounts
 
