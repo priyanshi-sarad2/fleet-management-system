@@ -758,3 +758,7 @@ The add-ons installed in this cluster:
 - **ebs-csi-driver** — provisions EBS volumes for persistent storage
 
 Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` and `ebs-csi-driver` are added on top, for pod-level IAM access and persistent (EBS-backed) storage respectively.
+
+---
+
+# Docker
