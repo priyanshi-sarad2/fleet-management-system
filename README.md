@@ -472,7 +472,7 @@ How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 a
 
 **What is Amazon MQ?** Amazon MQ is a managed message-broker service from AWS. Instead of running and maintaining a message broker yourself, AWS runs popular open-source brokers for you — **ActiveMQ** and **RabbitMQ** — and handles the servers, storage, patching, and availability.
 
-**Why Amazon MQ with the ActiveMQ engine?** The application already speaks **ActiveMQ** — the Position Simulator and Position Tracker connect using JMS/OpenWire (via `spring-boot-starter-activemq`). Amazon MQ's ActiveMQ engine is a managed, drop-in replacement for a self-hosted ActiveMQ broker: we get the same protocol and the same app behaviour, but without managing the broker ourselves — and **without rewriting any application code**. (A native AWS option like SQS would have meant rewriting the producer and consumer, since SQS isn't JMS.)
+**Why Amazon MQ with the ActiveMQ engine?** The application already speaks **ActiveMQ** — the Position Simulator and Position Tracker connect using JMS/OpenWire (via `spring-boot-starter-activemq`). Amazon MQ's ActiveMQ engine is a managed, drop-in replacement for a self-hosted ActiveMQ broker: we get the same protocol and the same app behaviour, but without managing the broker ourselves — and **without rewriting any application code**.
 
 ### The broker
 
