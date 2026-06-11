@@ -447,3 +447,19 @@ A route table is a set of rules that decides where network traffic is sent. Each
 ---
 
 # ECR
+
+ECR (Elastic Container Registry) is AWS's private Docker image registry. After we build the Docker image for a service, we push it to ECR, and the EKS cluster pulls the image from there when it deploys the pods.
+
+We use **3 ECR repositories — one for each of the 3 services that run in the cluster** (Position Simulator, Position Tracker, API Gateway). Keeping a separate repository per service keeps their images cleanly isolated and independently versioned.
+
+### Image retention
+
+Since this is a production setup, we don't want to keep every image forever — old images pile up and add storage cost. So each repository has a **lifecycle policy** that keeps only the most recent images and automatically deletes the older ones.
+
+Looking at the policy in the module:
+
+- We keep the **latest 5 images**. Five is a sensible production default — enough history to roll back a few versions if a deploy goes wrong, without letting images grow unbounded.
+- Only images whose tag starts with **`v`** are counted (releases are tagged `v1`, `v2`, `v3`, …). This is the `tagPrefixList = ["v"]` part of the rule.
+- The rule type is "more than N" (`imageCountMoreThan`), so once a repository has **more than 5** such tagged images, the rule's action is to `expire` (delete) the **oldest** images beyond the newest 5.
+
+How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 are kept. The moment you push `v6`, the repository now has 6 images, which is more than 5 — so the oldest one (`v1`) is automatically expired, always leaving the 5 most recent versions.
