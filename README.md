@@ -248,7 +248,7 @@ We need two S3 buckets:
 | Webapp | Static SPA served via CloudFront + S3 |
 | Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the EKS cluster |
 | Queue | Amazon MQ (managed ActiveMQ) |
-| MongoDB (for Position Tracker) | MongoDB Atlas (managed) |
+| MongoDB (for Position Tracker) | [MongoDB Atlas](#mongodb-atlas) (managed) |
 
 ---
 
