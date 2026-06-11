@@ -173,6 +173,15 @@ Each microservice should be highly cohesive and loosely coupled.
 
 All of the AWS infrastructure for this project is provisioned with Terraform. The main building blocks are summarised below.
 
+### Prerequisites
+
+| Tool | Why it's needed |
+|------|-----------------|
+| AWS CLI | To configure AWS credentials/profiles and talk to AWS |
+| kubectl | To interact with the Kubernetes (EKS) cluster |
+| eksctl | To create and manage EKS resources (e.g. IAM service accounts) |
+| Docker | To build and push the service images |
+
 ### Terraform
 
 | Item | Detail |
@@ -311,3 +320,74 @@ root (main/)  →  my module (modules/vpc)  →  official module (terraform-aws-
 - The official `terraform-aws-modules/vpc/aws` is a **nested child** (a child of my child).
 
 So "root" only ever refers to `main/`; anything inside `modules/` is a child, no matter how many layers deep the calls go.
+
+### init.tf
+
+This is the provider setup. Always pin the official AWS provider version so the builds stay reproducible.
+
+```hcl
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.35.1"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+```
+
+### Backend — prod-backend.tfbackend
+
+The S3 bucket that holds the state must be created beforehand — Terraform can't create the bucket it's going to store its own state in.
+
+```hcl
+bucket  = "fleetman-tf-state"
+key     = "prod/terraform.tfstate"
+region  = "us-east-1"
+encrypt = true
+```
+
+### Deploying the Infrastructure
+
+Clone the repo:
+
+```bash
+git clone https://github.com/priyanshi-sarad2/fleet-management-system.git
+```
+
+Create an IAM user with the permissions needed for infrastructure creation, then set up an AWS profile for it:
+
+```bash
+aws configure --profile fleetman-prod
+```
+
+Go into the root module and export the profile:
+
+```bash
+cd Infrastructure/main
+export AWS_PROFILE=fleetman-prod
+```
+
+Initialise Terraform with the backend config:
+
+```bash
+terraform init -backend-config=backends/prod-backend.tfbackend
+```
+
+Create and select a workspace:
+
+```bash
+terraform workspace new fleetman-prod
+terraform workspace select fleetman-prod
+```
+
+Review the plan, then apply:
+
+```bash
+terraform plan -var-file=prod-terraform.tfvars
+terraform apply -var-file=prod-terraform.tfvars
+```
