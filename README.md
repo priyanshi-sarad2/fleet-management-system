@@ -657,6 +657,24 @@ How access is granted in this project:
 
 So if a **developer** needs to access the cluster, we add an **Access Entry for their IAM user/role** here and attach the right access policy (e.g. `View` for read-only, `Admin` for full access). They don't get cluster access just from having an IAM user — it has to be granted explicitly via an Access Entry.
 
+## IAM roles (control plane and data plane each need their own)
+
+EKS uses **two separate IAM roles** — one for the **control plane** and one for the **data plane** (worker nodes). They do completely different jobs, so each gets only the permissions it needs (least privilege).
+
+**Cluster IAM role (control plane)**
+- Assumed by the EKS **control plane** itself.
+- Lets EKS manage AWS resources **on your behalf** — for example creating and managing the ENIs and other resources the cluster needs.
+- Key policy: `AmazonEKSClusterPolicy`.
+
+**Node IAM role (data plane / worker nodes)**
+- Assumed by the **EC2 worker nodes** (the kubelet on each node).
+- Lets the nodes join the cluster and make the AWS calls they need. Key policies:
+  - `AmazonEKSWorkerNodePolicy` — lets a node register with and talk to the control plane.
+  - `AmazonEKS_CNI_Policy` — lets the VPC CNI assign VPC IPs / ENIs to pods.
+  - `AmazonEC2ContainerRegistryReadOnly` — lets nodes pull container images from ECR.
+
+So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images. (These are different from **IRSA** below, which gives individual *pods* their own roles.)
+
 # IRSA — IAM Roles for Service Accounts
 
 **What is IRSA?** IRSA lets a Kubernetes **pod get its own AWS permissions through its ServiceAccount**, instead of borrowing the node's IAM role.
