@@ -377,6 +377,7 @@ Create and select a workspace:
 ```bash
 terraform workspace new fleetman-prod
 terraform workspace select fleetman-prod
+terraform workspace show
 ```
 
 Review the plan, then apply:
