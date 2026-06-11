@@ -173,7 +173,7 @@ Each microservice should be highly cohesive and loosely coupled.
 
 All of the AWS infrastructure for this project is provisioned with Terraform. The main building blocks are summarised below.
 
-### Prerequisites
+#### Prerequisites
 
 | Tool | Why it's needed |
 |------|-----------------|
@@ -183,7 +183,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | eksctl | To create and manage EKS resources (e.g. IAM service accounts) |
 | Docker | To build and push the service images |
 
-### Terraform
+#### Terraform
 
 | Item | Detail |
 |------|--------|
@@ -194,7 +194,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
-### AWS Services
+#### AWS Services
 
 | Service | Why it's used |
 |---------|---------------|
@@ -209,13 +209,13 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | MongoDB Atlas | Managed MongoDB for storing vehicle position history |
 | WAF | Web Application Firewall to protect the application |
 
-### IAM
+#### IAM
 
 | User | Purpose |
 |------|---------|
 | devops | Used for infrastructure creation via Terraform |
 
-### Inside the VPC
+#### Inside the VPC
 
 | Component | Why it's used |
 |-----------|---------------|
@@ -228,7 +228,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 EKS gets its own dedicated VPC (separate from anything else), so the cluster is fully network-isolated.
 
-### EKS
+#### EKS
 
 | Component | Detail |
 |-----------|--------|
@@ -245,7 +245,7 @@ EKS add-ons installed:
 - vpc-cni — assigns VPC IP addresses to pods
 - ebs-csi-driver — provisions EBS volumes for persistent storage
 
-### S3
+#### S3
 
 We need two S3 buckets:
 
@@ -254,7 +254,7 @@ We need two S3 buckets:
 | `fleetman-tf-state` | Stores the Terraform state file | Manually (it must already exist before Terraform can use it as its backend) |
 | `fleetman-codepipeline-artifacts` | Stores the artifacts passed between the stages of the AWS CodePipeline | Terraform |
 
-## How Each Service Is Deployed
+#### How Each Service Is Deployed
 
 | Service | Deployment |
 |---------|-----------|
