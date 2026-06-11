@@ -270,6 +270,12 @@ variable "create_aws_prometheus_adot_writer_ecr" {
 
 ######## Amazon MQ ########
 
+variable "create_amazon_mq" {
+  description = "Controls whether the Amazon MQ broker should be created"
+  type        = bool
+  default     = false
+}
+
 variable "mq_engine_type" {
   description = "The Amazon MQ broker engine type (e.g. ActiveMQ)"
   type        = string
