@@ -181,7 +181,6 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. Here the state is stored remotely in an S3 bucket (`fleetman-tf-state`), encrypted, with versioning enabled, so it is safe, shareable, and recoverable |
 | Variables (`prod-terraform.tfvars`) | The setup is parametrized — this file holds the values for the Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
 | Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, Prometheus, Grafana, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
-| AWS provider | Pinned to a fixed version (`hashicorp/aws` 6.35.1) and locked via `.terraform.lock.hcl` for reproducible builds |
 
 ### AWS Services
 
