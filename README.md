@@ -705,4 +705,4 @@ sequenceDiagram
 
 ### Where IRSA is used here
 
-IRSA is used whenever a workload in the cluster needs AWS access — for example the **AWS Load Balancer Controller** (needs ELB/EC2 permissions) and the **Prometheus/ADOT metrics writer** (needs to write to Amazon Managed Prometheus). Each gets its own ServiceAccount annotated with a dedicated least-privilege IAM role.
+IRSA is used whenever a workload in the cluster needs AWS access. For example, the **AWS Load Balancer Controller** needs ELB/EC2 permissions; or, more simply, if an **application running in a pod needs to read from an S3 bucket**, you give its ServiceAccount an IAM role scoped to just that bucket — so the pod can access that one bucket and nothing else. Each workload gets its own ServiceAccount annotated with a dedicated least-privilege IAM role.
