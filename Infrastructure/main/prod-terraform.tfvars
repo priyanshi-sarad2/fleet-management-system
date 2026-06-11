@@ -83,11 +83,11 @@ fleetman_webapp_alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
 #####################                   #####################
 #####################    EKS Cluster    #####################
 #####################                   #####################
-kubernetes_version      = "1.34"
+kubernetes_version      = "1.36"
 eks_deletion_protection = false
 
 ##########    EKS Addons    ##########
-eks_ebs_csi_driver_addon_version = "v1.56.0-eksbuild.1" # latest version as of 2026-03-15
+eks_ebs_csi_driver_addon_version = "v1.61.1-eksbuild.1" # latest version as of 2026-06-11
 
 ##########    CloudWatch Log Group    ##########
 create_eks_cluster_cloudwatch_log_group = false
