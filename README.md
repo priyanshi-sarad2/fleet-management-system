@@ -590,6 +590,25 @@ This project uses the **AWS-managed node group**: AWS handles the node provision
 
 ### Control plane ENI, data plane ENI, and bi-directional networking
 
+**ENI = Elastic Network Interface.** Think of an ENI as a **virtual network card** for a server. It plugs the server into a subnet and gives it an **IP address** — its identity on the network. Anything in a VPC that sends or receives traffic does so through an ENI.
+
+The diagram below shows the idea: the control plane lives in AWS's own network, but AWS places its **ENIs into our VPC's private subnets**, and the worker nodes have their own ENIs in those same subnets — so the two can talk both ways.
+
+```mermaid
+flowchart LR
+    subgraph AWSNET["AWS-managed network"]
+        CP["Control plane<br/>(API server, etcd, scheduler)"]
+    end
+
+    subgraph OURVPC["Our VPC — private subnets"]
+        CPENI["Control plane ENIs<br/>private IP + cluster SG"]
+        NODES["Worker nodes / data plane<br/>node ENIs + node SG"]
+    end
+
+    CP -. "managed by AWS" .- CPENI
+    CPENI <-->|"bi-directional traffic"| NODES
+```
+
 **A quick primer on ENIs and addressing.** In any network, traffic flow needs a **source** and a **destination**, and each needs an **address**. In AWS, a server gets its address through an **ENI (Elastic Network Interface)**. An ENI is attached to a **subnet** (a network), and from that subnet it receives an **IP** — private or public depending on the subnet — and that IP is the server's address. You then control what traffic is allowed to and from it using a **security group** (AWS's equivalent of a firewall like UFW on-prem). So in short: both the source and the destination need an ENI → which gives them an address → and security groups control the traffic between them.
 
 **Why this matters for EKS.** A Kubernetes cluster only works if the **control plane and the data plane can talk to each other — both ways**. For that, both sides must have an address in the **same network**.
