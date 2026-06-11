@@ -569,3 +569,21 @@ By adding only this IP to the access list, the Atlas cluster can **only be reach
 ---
 
 # Deploying EKS cluster
+
+An EKS cluster has two major components: the **control plane** and the **data plane**.
+
+### Control plane
+
+The control plane is **completely managed by AWS** — we don't provision, access (SSH into), or scale it ourselves. AWS runs it on its **own separate infrastructure** (a separate AWS-managed account/VPC, not our VPC) and takes care of the Kubernetes API server, etcd, scheduler, and controller manager, along with their high availability and patching.
+
+A key billing point: the control plane has a **flat hourly rate**. Even if we have **zero worker nodes** and aren't running any workloads, we're charged for the control plane for as long as the cluster exists. So a cluster that's just sitting idle still costs money — worth remembering when you spin clusters up for practice.
+
+### Data plane
+
+The data plane is the **worker nodes where the pods actually run**. EKS gives three options for it:
+
+- **Self-managed node group** — you create and manage the EC2 instances yourself (most control, most operational work).
+- **AWS-managed node group** — AWS provisions and manages the lifecycle of the EC2 worker nodes (AMIs, updates, scaling). **This is what this project uses.**
+- **Fargate** — serverless; no nodes to manage at all, pods run on capacity AWS provisions on demand.
+
+This project uses the **AWS-managed node group**: AWS handles the node provisioning and lifecycle, while we just declare the instance type and the min/max/desired sizes (in `prod-terraform.tfvars`). The node group is created automatically whenever the EKS cluster is created.
