@@ -21,19 +21,10 @@ variable "account_id" {
   type        = string
 }
 
-variable "app1" {
-  description = "Name of the first application service (used for naming, e.g. its ECR repository)"
-  type        = string
-}
-
-variable "app2" {
-  description = "Name of the second application service (used for naming, e.g. its ECR repository)"
-  type        = string
-}
-
-variable "app3" {
-  description = "Name of the third application service (used for naming, e.g. its ECR repository)"
-  type        = string
+variable "ecr_apps" {
+  description = "Application services that each get their own ECR repository (one repo is created per name)"
+  type        = list(string)
+  default     = []
 }
 
 ######## VPC ########

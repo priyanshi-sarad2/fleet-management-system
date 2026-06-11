@@ -2,9 +2,9 @@ name         = "fleet-management-system"
 project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
-app1        = "api-gateway"
-app2        = "position-simulator"
-app3        = "position-tracker"
+
+# Application services that each get their own ECR repository
+ecr_apps = ["api-gateway", "position-simulator", "position-tracker"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 
@@ -23,7 +23,6 @@ create_aws_prometheus_adot_writer_ecr = false
 
 
 ########    ECR    ########
-# Keep the latest 5 images per repository (prod); older tagged images are expired by the lifecycle policy.
 ecr_retention_count = 5
 
 
