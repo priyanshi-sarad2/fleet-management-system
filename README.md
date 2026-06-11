@@ -227,3 +227,14 @@ EKS add-ons installed:
 - kube-proxy — manages network routing rules on each node
 - vpc-cni — assigns VPC IP addresses to pods
 - ebs-csi-driver — provisions EBS volumes for persistent storage
+
+## How Each Service Is Deployed
+
+| Service | Deployment |
+|---------|-----------|
+| Webapp | Static SPA served via CloudFront + S3 |
+| Position Simulator | Kubernetes Deployment in the EKS cluster |
+| Position Tracker | Kubernetes Deployment in the EKS cluster |
+| API Gateway | Kubernetes Deployment in the EKS cluster |
+| Queue | Amazon MQ (managed ActiveMQ) |
+| MongoDB (for Position Tracker) | MongoDB Atlas (managed) |
