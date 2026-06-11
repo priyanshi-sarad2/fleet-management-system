@@ -199,7 +199,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | Service | Why it's used |
 |---------|---------------|
 | EKS cluster | The Kubernetes cluster the whole application is deployed on |
-| VPC | EKS lives inside its own Virtual Private Cloud (private network) |
+| [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | ECR | Stores the Docker images for our services |
 | Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
