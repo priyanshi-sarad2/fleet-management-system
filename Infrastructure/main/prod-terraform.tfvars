@@ -2,6 +2,10 @@ name         = "fleet-management-system"
 project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
+app1        = "api-gateway"
+app2        = "position-simulator"
+app3        = "position-tracker"
+
 # account_id is provided via the TF_VAR_account_id environment variable
 
 
@@ -9,12 +13,18 @@ env          = "prod"
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
 create_vpc                            = true
+create_ecr_repository                 = true
 create_eks_cluster                    = false
 create_eks_managed_node_group         = false
 create_eks_ebs_csi_driver_addon       = false
 create_cloudfront_fleetman_webapp     = false
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
+
+
+########    ECR    ########
+# Keep the latest 5 images per repository (prod); older tagged images are expired by the lifecycle policy.
+ecr_retention_count = 5
 
 
 ########    VPC - Public and Private Subnets    ########

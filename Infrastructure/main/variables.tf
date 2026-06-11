@@ -21,6 +21,21 @@ variable "account_id" {
   type        = string
 }
 
+variable "app1" {
+  description = "Name of the first application service (used for naming, e.g. its ECR repository)"
+  type        = string
+}
+
+variable "app2" {
+  description = "Name of the second application service (used for naming, e.g. its ECR repository)"
+  type        = string
+}
+
+variable "app3" {
+  description = "Name of the third application service (used for naming, e.g. its ECR repository)"
+  type        = string
+}
+
 ######## VPC ########
 
 variable "create_vpc" {
@@ -243,6 +258,18 @@ variable "custom_oidc_thumbprints" {
 }
 
 ######## ECR ########
+
+variable "create_ecr_repository" {
+  description = "Controls whether the ECR repositories for the application services should be created"
+  type        = bool
+  default     = false
+}
+
+variable "ecr_retention_count" {
+  description = "Number of most recent images to keep in each ECR repository (older ones are expired by the lifecycle policy)"
+  type        = number
+  default     = 1
+}
 
 variable "create_aws_prometheus_adot_writer_ecr" {
   description = "Controls whether the ECR repository for the AWS Prometheus ADOT writer image should be created"
