@@ -654,3 +654,5 @@ How access is granted in this project:
 
 - **`enable_cluster_creator_admin_permissions = true`** — automatically gives the IAM identity that runs Terraform (my `devops` user, the cluster creator) **admin access** to the cluster by creating an Access Entry for it. Without this, even the creator wouldn't be able to access the cluster.
 - **`access_entries`** — used to grant **additional** IAM users/roles access. For example, the AWS account **root user** has full account access but **no** cluster access by default, so an Access Entry is added for it here. Any other users/roles that need cluster access are added the same way.
+
+So if a **developer** needs to access the cluster, we add an **Access Entry for their IAM user/role** here and attach the right access policy (e.g. `View` for read-only, `Admin` for full access). They don't get cluster access just from having an AWS account — it has to be granted explicitly via an Access Entry.
