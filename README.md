@@ -511,3 +511,9 @@ For the admin password (web console), use `/mq/mq_admin_password` instead. The `
 ---
 
 # MongoDB Atlas
+
+**What is MongoDB?** MongoDB is a NoSQL **document database**. Instead of tables and rows like a relational database, it stores data as flexible, JSON-like documents.
+
+**Why MongoDB for this project?** The Position Tracker needs to store the **history of where every vehicle has been**. Each record is a simple JSON-like document — vehicle name, latitude, longitude, timestamp, and speed. This history is just a large, ever-growing collection of such documents with nothing relational about it, so a document database is a natural fit. It also lets the tracker keep the history **durably** instead of in memory (which is lost whenever the pod restarts).
+
+**Why MongoDB Atlas?** Atlas is MongoDB's fully-managed cloud service. Rather than running and maintaining MongoDB ourselves inside the cluster — handling storage, backups, upgrades, and availability — Atlas manages all of that for us, and the Position Tracker simply connects to it.
