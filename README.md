@@ -469,3 +469,26 @@ How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 a
 ---
 
 # Deploying the Queue — Amazon MQ
+
+**What is Amazon MQ?** Amazon MQ is a managed message-broker service from AWS. Instead of running and maintaining a message broker yourself, AWS runs popular open-source brokers for you — **ActiveMQ** and **RabbitMQ** — and handles the servers, storage, patching, and availability.
+
+**Why Amazon MQ with the ActiveMQ engine?** The application already speaks **ActiveMQ** — the Position Simulator and Position Tracker connect using JMS/OpenWire (via `spring-boot-starter-activemq`). Amazon MQ's ActiveMQ engine is a managed, drop-in replacement for the self-hosted ActiveMQ that the course originally ran as a pod: we get the same protocol and the same app behaviour, but without managing the broker ourselves — and **without rewriting any application code**. (A native AWS option like SQS would have meant rewriting the producer and consumer, since SQS isn't JMS.)
+
+### The broker
+
+- A single-instance ActiveMQ broker (`mq.t3.micro`, engine version `5.19`), named **`fleetman-mq`**.
+- It is deployed **inside a private subnet** of our VPC and is **not publicly accessible** — so it can only be reached from within the VPC, never from the internet.
+- Its security group allows inbound traffic on **port `61617`** (OpenWire over TLS — the port JMS uses). This is what lets both the **Position Simulator** (producer) and the **Position Tracker** (consumer) reach the broker to send and receive messages.
+- Two users are created: an **admin** user (web-console access) and an **application** user (`fleetman-app`) that the services use to connect. The passwords are auto-generated and stored securely in **SSM Parameter Store** (the password as an encrypted SecureString).
+
+### How the apps connect to the broker
+
+Both the Position Simulator and the Position Tracker connect to the **same** broker, so **both** services need the same three values, supplied as environment variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `ACTIVEMQ_BROKER_URL` | The broker's OpenWire TLS endpoint, e.g. `ssl://b-xxxx-xxxx.mq.us-east-1.amazonaws.com:61617` |
+| `ACTIVEMQ_USER` | The application username (`fleetman-app`) |
+| `ACTIVEMQ_PASSWORD` | The application user's password (read from SSM) |
+
+In the app config these map to `spring.activemq.broker-url`, `spring.activemq.user`, and `spring.activemq.password`. If they aren't set, the apps fall back to the old in-cluster broker URL with no credentials (used for local development).
