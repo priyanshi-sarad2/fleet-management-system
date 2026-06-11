@@ -673,25 +673,7 @@ EKS uses **two separate IAM roles** — one for the **control plane** and one fo
   - `AmazonEKS_CNI_Policy` — lets the VPC CNI assign VPC IPs / ENIs to pods.
   - `AmazonEC2ContainerRegistryReadOnly` — lets nodes pull container images from ECR.
 
-So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images.
-
-## Choosing the node group instance type and min/max/desired size (pod limits)
-
-The number of pods a node can run depends on its **instance type** — a bigger instance type allows **more pods** (the limit is tied to how many ENIs/IPs the instance supports for the VPC CNI).
-
-Also important: when the cluster starts, several **system pods** (CoreDNS, kube-proxy, VPC CNI, etc.) are scheduled automatically and **count toward that pod limit** — so the room left for your own app pods is smaller than the raw maximum. This has to be kept in mind when picking the instance type and the node count (min/max/desired).
-
-AWS provides a **max-pods calculator** script to check the pod limit per instance type:
-
-```bash
-AWS_PROFILE=<your-profile> ./max-pods-calculator.sh \
-  --instance-type t3.micro \
-  --cni-version 1.9.0-eksbuild.1 \
-  --region us-east-1
-# e.g. t3.micro -> only 4 pods allowed
-```
-
-For example, a `t3.micro` allows only ~4 pods — and with the system pods using some of those, almost nothing is left for the app. That's why the instance type and node count are chosen with the pod limit in mind.
+So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images. (These are different from **IRSA** below, which gives individual *pods* their own roles.)
 
 # IRSA — IAM Roles for Service Accounts
 
@@ -742,3 +724,23 @@ sequenceDiagram
 ### Where IRSA is used here
 
 IRSA is used whenever a workload in the cluster needs AWS access. For example, the **AWS Load Balancer Controller** needs ELB/EC2 permissions; or, more simply, if an **application running in a pod needs to read from an S3 bucket**, you give its ServiceAccount an IAM role scoped to just that bucket — so the pod can access that one bucket and nothing else. Each workload gets its own ServiceAccount annotated with a dedicated least-privilege IAM role.
+
+---
+
+# Choosing the node group instance type and min/max/desired size (pod limits)
+
+The number of pods a node can run depends on its **instance type** — a bigger instance type allows **more pods** (the limit is tied to how many ENIs/IPs the instance supports for the VPC CNI).
+
+Also important: when the cluster starts, several **system pods** (CoreDNS, kube-proxy, VPC CNI, etc.) are scheduled automatically and **count toward that pod limit** — so the room left for your own app pods is smaller than the raw maximum. This has to be kept in mind when picking the instance type and the node count (min/max/desired).
+
+AWS provides a **max-pods calculator** script to check the pod limit per instance type:
+
+```bash
+AWS_PROFILE=<your-profile> ./max-pods-calculator.sh \
+  --instance-type t3.micro \
+  --cni-version 1.9.0-eksbuild.1 \
+  --region us-east-1
+# e.g. t3.micro -> only 4 pods allowed
+```
+
+For example, a `t3.micro` allows only ~4 pods — and with the system pods using some of those, almost nothing is left for the app. That's why the instance type and node count are chosen with the pod limit in mind.
