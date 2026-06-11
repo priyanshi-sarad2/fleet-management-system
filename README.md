@@ -398,3 +398,7 @@ Review the plan, then apply:
 terraform plan -var-file=prod-terraform.tfvars
 terraform apply -var-file=prod-terraform.tfvars
 ```
+
+---
+
+# VPC
