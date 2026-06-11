@@ -227,7 +227,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | IRSA | IAM Roles for Service Accounts — gives individual pods their own least-privilege AWS permissions through their Kubernetes service account |
 | IAM roles | Roles for the EKS cluster and the worker node group |
 
-EKS add-ons installed:
+[EKS add-ons installed:](#eks-add-ons)
 
 - CoreDNS — in-cluster DNS for service discovery
 - eks-pod-identity-agent — lets pods assume IAM roles (pod identity)
@@ -744,3 +744,19 @@ AWS_PROFILE=<your-profile> ./max-pods-calculator.sh \
 ```
 
 For example, a `t3.micro` allows only ~4 pods — and with the system pods using some of those, almost nothing is left for the app. That's why the instance type and node count are chosen with the pod limit in mind.
+
+---
+
+# EKS Add-ons
+
+**What are EKS add-ons?** Add-ons are AWS-managed pieces of operational software that the cluster needs to function (DNS, networking, storage, etc.). Instead of installing and upgrading these yourself, EKS manages their whole lifecycle — install, configuration, and version upgrades — as cluster add-ons.
+
+The add-ons installed in this cluster:
+
+- **CoreDNS** — in-cluster DNS for service discovery (lets pods find each other and services by name)
+- **kube-proxy** — manages network routing rules on each node so traffic reaches the right pods
+- **vpc-cni** — assigns VPC IP addresses to the pods (Amazon VPC networking for pods)
+- **eks-pod-identity-agent** — lets pods assume IAM roles (pod identity)
+- **ebs-csi-driver** — provisions EBS volumes for persistent storage
+
+Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` and `ebs-csi-driver` are added on top, for pod-level IAM access and persistent (EBS-backed) storage respectively.
