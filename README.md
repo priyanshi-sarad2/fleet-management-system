@@ -215,19 +215,6 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 |------|---------|
 | devops | Used for infrastructure creation via Terraform |
 
-#### Inside the VPC
-
-| Component | Why it's used |
-|-----------|---------------|
-| 2 public subnets | For the load balancer and the NAT gateway |
-| 4 private subnets | Where EKS is deployed and the application pods run |
-| Internet gateway | Lets resources in the public subnets reach the internet |
-| NAT gateway | Provides outbound internet access for resources in the private subnets |
-| Public route table | Routing for the public subnets (via the internet gateway) |
-| Private route table | Routing for the private subnets (via the NAT gateway) |
-
-EKS gets its own dedicated VPC (separate from anything else), so the cluster is fully network-isolated.
-
 #### EKS
 
 | Component | Detail |
@@ -402,3 +389,44 @@ terraform apply -var-file=prod-terraform.tfvars
 ---
 
 # VPC
+
+EKS gets its own dedicated VPC (a Virtual Private Cloud — a private, isolated network inside AWS), so the cluster is fully network-isolated from everything else.
+
+A key thing about a VPC is that **every resource inside it can talk to every other resource by default** (subject to security groups and network ACLs). So the EC2 worker nodes, the pods, and other resources in the VPC can reach each other over private IPs without going anywhere near the public internet. The VPC is essentially the private network that holds the whole cluster.
+
+Inside the VPC we have:
+
+### Subnets
+
+A subnet is just a slice of the VPC's IP range. Each subnet lives in one Availability Zone, and we split them into public and private.
+
+**Public subnets (2)** — A public subnet is one that has a route to the internet through an internet gateway, so resources placed here can be reached from the internet (and reach out to it). We use the public subnets for the **load balancer** and the **NAT gateway** — things that need to face the internet.
+
+**Private subnets (4)** — A private subnet has **no** direct route to the internet. This is where **EKS is deployed and the application pods run**. Keeping the nodes and pods private is more secure, because they cannot be reached directly from the internet — anything coming in has to go through the load balancer in the public subnet first.
+
+### Internet Gateway
+
+An internet gateway is what connects the VPC to the public internet. Without it, even the public subnets would have no way in or out.
+
+We need it so that resources in the **public subnets** (like the load balancer and the NAT gateway) can send and receive traffic to and from the internet. It's attached to the VPC, and the public route table sends internet-bound traffic to it.
+
+### NAT Gateway
+
+The pods and nodes live in **private subnets**, which have no route to the internet. But they still need **outbound** internet access — for example, to pull container images, download packages, or call external APIs. Without a NAT gateway, apps inside the pods would have no internet access at all.
+
+This is what the NAT (Network Address Translation) gateway solves:
+
+- The NAT gateway sits in a **public subnet** and is given an **Elastic IP** (a fixed public IP address).
+- When a pod in a private subnet wants to reach the internet, its traffic is routed to the NAT gateway.
+- The NAT gateway swaps the pod's private source IP for its own Elastic IP and sends the request out through the internet gateway.
+- Return traffic comes back to the NAT gateway, which forwards it to the right private resource.
+
+The important property is that it only allows **outbound** connections — the internet can't start a connection *into* the private subnets through the NAT gateway. So pods get internet access for pulling things they need, while staying unreachable from outside.
+
+### Route Tables
+
+A route table is a set of rules that decides where network traffic is sent. Each subnet is associated with one route table.
+
+**Public route table** — associated with the public subnets. It has a route that sends internet-bound traffic (`0.0.0.0/0`) to the **internet gateway**, which is what makes those subnets "public".
+
+**Private route table** — associated with the private subnets. Its internet-bound traffic (`0.0.0.0/0`) is sent to the **NAT gateway** instead. This is how private resources get outbound internet access without being directly exposed to the internet.
