@@ -26,12 +26,6 @@ variable "allowed_ingress_ports" {
   default     = []
 }
 
-variable "allowed_cidr_blocks" {
-  type        = list(string)
-  description = "IPv4 CIDRs allowed to reach the broker's security group (e.g. the VPC's private subnet CIDRs)"
-  default     = []
-}
-
 variable "vpc_id" {
   type        = string
   description = "ID of the VPC the broker is deployed into"

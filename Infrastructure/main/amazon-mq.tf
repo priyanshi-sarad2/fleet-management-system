@@ -14,7 +14,6 @@ module "amazon-mq" {
   engine_version        = var.mq_engine_version
   host_instance_type    = var.mq_host_instance_type
   allowed_ingress_ports = var.mq_allowed_ingress_ports
-  allowed_cidr_blocks   = var.private_subnets # restrict broker access to the VPC's private subnets only
 
   mq_admin_user       = var.mq_admin_user
   mq_application_user  = var.mq_application_user
