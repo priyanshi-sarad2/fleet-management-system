@@ -15,6 +15,12 @@ variable "project_name" {
   default = "project"
 }
 
+# Supplied via the TF_VAR_account_id environment variable (kept out of version control).
+variable "account_id" {
+  description = "AWS account ID. Provide via the TF_VAR_account_id environment variable."
+  type        = string
+}
+
 ######## VPC ########
 
 variable "create_vpc" {

@@ -359,11 +359,12 @@ Create an IAM user with the permissions needed for infrastructure creation, then
 aws configure --profile fleetman-prod
 ```
 
-Go into the root module and export the profile:
+Go into the root module and export the profile. The AWS account ID is kept out of version control, so it's passed in as an environment variable (`TF_VAR_account_id`), which Terraform automatically maps to the `account_id` variable:
 
 ```bash
 cd Infrastructure/main
 export AWS_PROFILE=fleetman-prod
+export TF_VAR_account_id=<your-aws-account-id>
 ```
 
 Initialise Terraform with the backend config:

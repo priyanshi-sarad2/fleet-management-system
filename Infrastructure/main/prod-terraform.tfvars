@@ -2,7 +2,7 @@ name         = "fleet-management-system"
 project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
-account_id   = "331860160408"
+# account_id is provided via the TF_VAR_account_id environment variable (not committed here).
 
 
 
@@ -14,7 +14,7 @@ create_eks_managed_node_group         = false
 create_eks_ebs_csi_driver_addon       = false
 create_cloudfront_fleetman_webapp     = false
 setup_eks_cluster_monitoring          = false
-create_aws_prometheus_adot_writer_ecr = true
+create_aws_prometheus_adot_writer_ecr = false
 
 
 ########    VPC - Public and Private Subnets    ########
