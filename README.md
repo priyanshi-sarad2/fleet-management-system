@@ -178,9 +178,15 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | Service | Why it's used |
 |---------|---------------|
 | EKS cluster | The Kubernetes cluster the whole application is deployed on |
-| AWS-managed data plane (managed node group) | The worker nodes where our application pods run |
-| ClusterIP service | Service-to-service communication between the microservices inside the cluster |
 | VPC | EKS lives inside its own Virtual Private Cloud (private network) |
+| IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
+| ECR | Stores the Docker images for our services |
+| Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
+| CloudFront | CDN in front of the main webapp |
+| CloudWatch | Stores and views logs |
+| Amazon MQ | Managed message broker for our queue |
+| MongoDB Atlas | Managed MongoDB for storing vehicle position history |
+| WAF | Web Application Firewall to protect the application |
 
 ### Inside the VPC
 
