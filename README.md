@@ -405,9 +405,9 @@ A subnet is a smaller slice of the VPC's IP range. Two ideas make this clearer:
 
 We split the VPC range into public and private subnets, each a `/24` block (256 addresses):
 
-**Public subnets (2)** — `10.2.1.0/24` and `10.2.2.0/24`. A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. We use them for the **load balancer** and the **NAT gateway**.
+**Public subnets (2)** — `10.2.1.0/24` and `10.2.2.0/24`. A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. Resources here can be given a **public IP** (in addition to their private IP), which is the address the outside world uses to reach them. We use these subnets for the **load balancer** and the **NAT gateway**.
 
-**Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. This is where the **EKS worker nodes and the application pods run**. Keeping them private is more secure — they cannot be reached directly from the internet, so any incoming traffic has to go through the load balancer in the public subnet first.
+**Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. Resources here only get a **private IP** (an address that is only reachable from inside the VPC) and no public IP, so nothing on the internet can address them directly. This is where the **EKS worker nodes and the application pods run**. Keeping them private is more secure — incoming traffic has to go through the load balancer in the public subnet first, and outbound traffic goes out via the NAT gateway.
 
 ### Internet Gateway
 
