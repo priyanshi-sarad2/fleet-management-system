@@ -251,9 +251,7 @@ We need two S3 buckets:
 
 # Using Terraform for Infra Creation
 
-## Why Terraform
-
-Terraform lets us define all of the AWS infrastructure as code instead of clicking around the console by hand. The biggest reason I chose it is how it manages **state**.
+**Why Terraform?** Terraform lets us define all of the AWS infrastructure as code instead of clicking around the console by hand. The biggest reason I chose it is how it manages **state**.
 
 Terraform works on the idea of **desired state vs current state**:
 
