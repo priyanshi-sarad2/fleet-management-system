@@ -587,3 +587,22 @@ The data plane is the **worker nodes where the pods actually run**. EKS gives th
 - **Fargate** — serverless; no nodes to manage at all, pods run on capacity AWS provisions on demand.
 
 This project uses the **AWS-managed node group**: AWS handles the node provisioning and lifecycle, while we just declare the instance type and the min/max/desired sizes (in `prod-terraform.tfvars`). The node group is created automatically whenever the EKS cluster is created.
+
+### Control plane ENI, data plane ENI, and bi-directional networking
+
+**A quick primer on ENIs and addressing.** In any network, traffic flow needs a **source** and a **destination**, and each needs an **address**. In AWS, a server gets its address through an **ENI (Elastic Network Interface)**. An ENI is attached to a **subnet** (a network), and from that subnet it receives an **IP** — private or public depending on the subnet — and that IP is the server's address. You then control what traffic is allowed to and from it using a **security group** (AWS's equivalent of a firewall like UFW on-prem). So in short: both the source and the destination need an ENI → which gives them an address → and security groups control the traffic between them.
+
+**Why this matters for EKS.** A Kubernetes cluster only works if the **control plane and the data plane can talk to each other — both ways**. For that, both sides must have an address in the **same network**.
+
+- **Data plane** — our worker nodes (the AWS-managed node group) are EC2 instances deployed into our VPC's **private subnets**. Each instance automatically gets an **ENI** in that subnet, so it gets a **private IP** — it already has an address and is already part of our VPC.
+- **Control plane** — this is managed by AWS and lives in a **separate, AWS-managed network/account**, so by default it is *not* in our VPC. When we create the cluster, AWS creates **ENIs for the control plane** and places them in the **subnets of our VPC** that we specify. We don't attach them by hand — we just tell EKS which VPC/subnets to use, and EKS creates the control-plane ENIs there.
+
+**What this achieves:**
+
+- Because the control-plane ENIs sit in our **private subnets**, they get **private IPs** from our network — so the control plane effectively becomes part of our VPC.
+- We also attach a **security group** to these ENIs. In EKS this is the **cluster security group**, and the same security group also covers the data-plane nodes — so both ends share consistent rules.
+- Now both sides have an address in the same network, and the security group allows them to communicate. This enables the **bi-directional traffic** that defines a Kubernetes cluster:
+  - **control plane → data plane:** the kube-apiserver reaches the **kubelet** on each node (to schedule/inspect pods),
+  - **data plane → control plane:** nodes **register** themselves with the cluster and continuously **report their status** back to the kube-apiserver.
+
+That two-way flow between control plane and data plane — made possible by attaching the control-plane ENIs into our VPC's subnets — is exactly what turns these separate pieces into one working cluster.
