@@ -481,6 +481,8 @@ How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 a
 - Its security group allows inbound traffic on **port `61617`** (OpenWire over TLS — the port JMS uses). This is what lets both the **Position Simulator** (producer) and the **Position Tracker** (consumer) reach the broker to send and receive messages.
 - Two users are created: an **admin** user (web-console access) and an **application** user (`fleetman-app`) that the services use to connect. The passwords are auto-generated and stored securely in **SSM Parameter Store** (the password as an encrypted SecureString).
 
+![Amazon MQ broker fleetman-mq in Running state — Apache ActiveMQ, single-instance, mq.t3.micro](docs/images/mq-broker-running.png)
+
 ### How the apps connect to the broker
 
 Both the Position Simulator and the Position Tracker connect to the **same** broker, so **both** services need the same three values, supplied as environment variables:
