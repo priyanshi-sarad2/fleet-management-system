@@ -557,6 +557,8 @@ Why the NAT Elastic IP?
 - To reach Atlas (which lives outside the VPC, on the internet), the pods make an **outbound** connection — and since they're in private subnets, that traffic goes out through the **NAT gateway**.
 - The NAT gateway uses a fixed **Elastic IP**, so from Atlas's point of view, every connection from our cluster appears to come from that one IP. The Elastic IP matters because it is **static** — it stays the same, so it's safe to allowlist.
 
+The IP is added as a **`/32`** entry (e.g. `<nat-eip>/32`). A `/32` CIDR means **exactly one IP address** — a single host — so only that precise address is allowed, nothing wider.
+
 By adding only this IP to the access list, the Atlas cluster can **only be reached from our cluster's NAT IP** — nothing else on the internet can connect to it, even with the password.
 
 ![MongoDB Atlas IP Access List — only the fleetman VPC NAT gateway Elastic IP is allowed](docs/images/mongodb-ip-access-list.png)
