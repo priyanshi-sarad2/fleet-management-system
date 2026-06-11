@@ -181,6 +181,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | AWS CLI | To configure AWS credentials/profiles and talk to AWS |
 | kubectl | To interact with the Kubernetes (EKS) cluster |
 | eksctl | To create and manage EKS resources (e.g. IAM service accounts) |
+| Helm | To install cluster add-ons like the AWS Load Balancer Controller |
 | Docker | To build and push the service images |
 
 #### Terraform
