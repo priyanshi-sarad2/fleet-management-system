@@ -600,7 +600,7 @@ This project uses the **AWS-managed node group**: AWS handles the node provision
 **What this achieves:**
 
 - Because the control-plane ENIs sit in our **private subnets**, they get **private IPs** from our network — so the control plane effectively becomes part of our VPC.
-- We also attach a **security group** to these ENIs. In EKS this is the **cluster security group**, and the same security group also covers the data-plane nodes — so both ends share consistent rules.
+- We also attach a **security group** to these ENIs. In EKS this is the **cluster security group**. The data-plane nodes have their **own separate node security group**, and rules are configured between the two so the control plane and the nodes are allowed to talk to each other.
 - Now both sides have an address in the same network, and the security group allows them to communicate. This enables the **bi-directional traffic** that defines a Kubernetes cluster:
   - **control plane → data plane:** the kube-apiserver reaches the **kubelet** on each node (to schedule/inspect pods),
   - **data plane → control plane:** nodes **register** themselves with the cluster and continuously **report their status** back to the kube-apiserver.
