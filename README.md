@@ -169,18 +169,9 @@ Each microservice should be highly cohesive and loosely coupled.
 
 # Deployment on AWS EKS
 
-## Creating the AWS Infrastructure — Terraform
+## Creating the AWS Infrastructure
 
-All of the AWS infrastructure for this project is provisioned with Terraform. The main building blocks are summarised below.
-
-### Terraform
-
-| Item | Detail |
-|------|--------|
-| Workspace | A separate Terraform workspace is used just for this infrastructure, keeping its state isolated from anything else |
-| Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. Here the state is stored remotely in an S3 bucket (`fleetman-tf-state`), encrypted, with versioning enabled, so it is safe, shareable, and recoverable |
-| Variables (`prod-terraform.tfvars`) | The setup is parametrized — this file holds the values for the Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
-| Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, Prometheus, Grafana, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
+All of the AWS infrastructure for this project is provisioned with Terraform (see [Using Terraform for Infra Creation](#using-terraform-for-infra-creation)). The main building blocks are summarised below.
 
 ### AWS Services
 
@@ -244,3 +235,16 @@ We need two S3 buckets:
 | Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the EKS cluster |
 | Queue | Amazon MQ (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | MongoDB Atlas (managed) |
+
+---
+
+# [Using Terraform for Infra Creation](Infrastructure)
+
+| Item | Detail |
+|------|--------|
+| Workspace | A separate Terraform workspace is used just for this infrastructure, keeping its state isolated from anything else |
+| Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. Here the state is stored remotely in an S3 bucket (`fleetman-tf-state`), encrypted, with versioning enabled, so it is safe, shareable, and recoverable |
+| Variables (`prod-terraform.tfvars`) | The setup is parametrized — this file holds the values for the Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
+| Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, Prometheus, Grafana, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
+
+<sub>**[more on terraform →](Infrastructure)**</sub>
