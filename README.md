@@ -192,3 +192,22 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | NAT gateway | Provides outbound internet access for resources in the private subnets |
 | Public route table | Routing for the public subnets (via the internet gateway) |
 | Private route table | Routing for the private subnets (via the NAT gateway) |
+
+EKS gets its own dedicated VPC (separate from anything else), so the cluster is fully network-isolated.
+
+### EKS
+
+| Component | Detail |
+|-----------|--------|
+| Control plane | Completely managed by AWS — we cannot access or scale it ourselves |
+| Data plane | AWS-managed node group (AWS handles node creation) — where our application pods are deployed |
+| IRSA | IAM Roles for Service Accounts — gives individual pods their own least-privilege AWS permissions through their Kubernetes service account |
+| IAM roles | Roles for the EKS cluster and the worker node group |
+
+EKS add-ons installed:
+
+- CoreDNS — in-cluster DNS for service discovery
+- eks-pod-identity-agent — lets pods assume IAM roles (pod identity)
+- kube-proxy — manages network routing rules on each node
+- vpc-cni — assigns VPC IP addresses to pods
+- ebs-csi-driver — provisions EBS volumes for persistent storage
