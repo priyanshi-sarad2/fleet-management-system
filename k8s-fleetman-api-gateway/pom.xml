@@ -69,59 +69,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration><executable>false</executable></configuration>
-			</plugin>			
-			
- 			<plugin>
-				<groupId>io.fabric8</groupId>
-				<artifactId>docker-maven-plugin</artifactId>
-				<version>0.21.0</version>
-			
-				<configuration>			
-			        <!-- <dockerHost>unix:///var/run/docker.sock</dockerHost> -->
-			        <dockerHost>tcp://192.168.99.100:2376</dockerHost>  
-                    <certPath>C:\Users\Richard\.docker\machine\machines\default</certPath>
-			
-			        <verbose>true</verbose>
-        			<extensions>true</extensions>
-			        		     
-					<images>
-						<image>
-							<name>richardchesterwood/k8s-fleetman-api-gateway</name>
-							<build>
-								<dockerFileDir>${project.basedir}/src/main/docker/</dockerFileDir>
-			
-								<assembly>
-									<descriptorRef>artifact</descriptorRef>
-								</assembly>
-								<tags>
-									<tag>release2</tag>
-								</tags>
-							</build>
-						</image>
-					</images>
-				</configuration>	
-				
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>build</goal>
-						</goals>
-					</execution>
-					
-					<execution>
-						<id>mydeploy</id>
-						<phase>post-integration-test</phase>
-						<goals>
-							<goal>push</goal>
-						</goals>
-					</execution>
-					
-				</executions>
-							
-			</plugin>						
-			
-			
+			</plugin>
 		</plugins>
 		
 		<resources>
