@@ -225,14 +225,6 @@ resource "aws_codebuild_project" "ecs_build_project" {
       value = var.app
     }
     environment_variable {
-      name  = "S3_BUCKET"
-      value = var.s3_env_bucket
-    }
-    environment_variable {
-      name  = "BUCKET_PATH"
-      value = var.s3_env_bucket_path
-    }
-    environment_variable {
       name  = "REGION"
       value = var.region
     }

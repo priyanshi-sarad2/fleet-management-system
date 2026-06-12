@@ -205,14 +205,6 @@ variable "build_compute_type" {
   type    = string
   default = null
 }
-variable "s3_env_bucket" {
-  type    = string
-  default = null
-}
-variable "s3_env_bucket_path" {
-  type    = string
-  default = null
-}
 variable "region" {
   type        = string
   description = "AWS region where resources are deployed"

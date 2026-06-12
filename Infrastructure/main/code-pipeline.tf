@@ -94,9 +94,6 @@ module "code-pipeline" {
   enable_deploy_stage     = !each.value.deploy_on_eks
   enable_invalidate_stage = !each.value.deploy_on_eks
 
-  s3_env_bucket      = "${var.project_name}-env-files"
-  s3_env_bucket_path = "${each.key}/${var.env}"
-
   # ECR repo for this app, pulled from the for_each ECR module
   ecr_login          = module.ecr["ecr-${each.key}"].ecr_login_endpoint
   ecr_repository_uri = module.ecr["ecr-${each.key}"].ecr_repository_url
