@@ -770,3 +770,94 @@ The great thing about a Docker image is that it **encapsulates the entire applic
 Once an image is built, we can push it to a **registry** — Docker Hub or **Amazon ECR**. From there, we can deploy the application easily anywhere using that image — an on-prem Docker host, a Kubernetes cluster, or the cloud.
 
 In this project, each of the three apps has its own **Dockerfile**, and the built images are pushed to the **ECR repositories created via Terraform**.
+
+## How a Java app works (using the API Gateway as the example)
+
+Java is a **compiled** language, so there's an extra step: you can't just "run the source." The code must first be **compiled and packaged** into an artifact (a `.jar`), and then the Java runtime runs that.
+
+The API Gateway is a **Spring Boot app (Java 8)**, built with **Maven**:
+
+1. You write the `.java` source.
+2. **Maven compiles** it (`.java` → `.class` bytecode) and **packages** it into a single JAR.
+3. Because it's Spring Boot, that JAR is a **"fat JAR" (uber JAR)** — one self-contained file containing your compiled code, **all** dependency libraries, **and an embedded Tomcat web server**. So there's no separate server to install.
+
+At runtime, the **JRE** executes the bytecode and the **embedded Tomcat** serves HTTP on **port 8080**.
+
+| File | Purpose |
+|------|---------|
+| `pom.xml` | Dependencies + build configuration (Maven) |
+| `src/` | The Java source code |
+| `target/*.jar` | The built fat JAR, produced by `mvn package` |
+| `Dockerfile` | Recipe to build the container image |
+
+## Deploying it manually (without Docker)
+
+1. Build the JAR:
+   ```bash
+   mvn package          # produces target/fleetman-0.0.1-SNAPSHOT.jar
+   ```
+2. Copy that JAR to the server.
+3. Install a **JRE** on the server (e.g. `apt install openjdk-8-jre`).
+4. Run it:
+   ```bash
+   java -jar fleetman-0.0.1-SNAPSHOT.jar   # embedded Tomcat listens on 8080
+   ```
+5. In production you'd run it as a **systemd service** so it stays up and restarts on crash/reboot.
+
+The pain: every server needs the **exact right Java version** and setup, and you manage the JAR + service by hand — the classic "works on my machine" problem.
+
+## Why Docker is better here
+
+Docker packages the **JRE + the JAR + everything the app needs** into a single **image**. That image runs **identically everywhere** — your laptop, any Docker host, a Kubernetes cluster, or the cloud — with no need to install or match the right Java version on each server. Build once, run anywhere.
+
+## The Dockerfile (API Gateway)
+
+```dockerfile
+# ---------- Stage 1: build ----------
+FROM maven:3.6.3-jdk-8-slim AS build
+WORKDIR /app
+
+# Copy only the pom first and pre-download dependencies (cached layer).
+COPY pom.xml ./
+RUN mvn -q -B dependency:go-offline
+
+# Now copy the source and build the jar (tests skipped for the image build)
+COPY src ./src
+RUN mvn -q -B -DskipTests package
+
+# ---------- Stage 2: runtime ----------
+FROM eclipse-temurin:8-jre-alpine
+LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
+
+# Create a non-root user/group and an app dir it owns (security best practice)
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app && chown app:app /app
+
+WORKDIR /app
+# Copy the jar out of the build stage and give ownership to the app user
+COPY --chown=app:app --from=build /app/target/*.jar app.jar
+
+USER app
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+## Dockerfile breakdown
+
+It's a **multi-stage build** — a heavy "build" stage that compiles the JAR, and a small "runtime" stage that just runs it.
+
+**Build stage**
+- `FROM maven:3.6.3-jdk-8-slim AS build` — an image with **Maven + JDK**, needed to compile the code.
+- `COPY pom.xml` then `mvn dependency:go-offline` — downloads all dependencies **first**, as its own layer. Docker caches layers, so this only re-runs when `pom.xml` changes — everyday **code edits don't re-download dependencies**, which makes rebuilds fast.
+- `COPY src` then `mvn -DskipTests package` — compiles and builds the fat JAR at `/app/target/*.jar`.
+
+**Runtime stage**
+- `FROM eclipse-temurin:8-jre-alpine` — a tiny **JRE-only Alpine** image: just enough to *run* Java, with no JDK/Maven/source → a small, more secure final image.
+- `addgroup`/`adduser` + `USER app` — creates and switches to a **non-root user**, so the app never runs as root (security best practice).
+- `mkdir + chown /app` and `COPY --chown=app:app ...` — the **`app` user owns** both the working directory and the jar.
+- `COPY --from=build .../*.jar app.jar` — copies **only the built jar** from the build stage (no build tooling in the final image) and renames it `app.jar` (the wildcard avoids hardcoding the version).
+- `EXPOSE 8080` — documents the port the embedded Tomcat listens on.
+- `ENTRYPOINT ["java","-jar","app.jar"]` — runs the app. The **exec form** (JSON array) makes `java` run as **PID 1**, so it receives stop signals for a clean shutdown.
+
+The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is identical but **without `EXPOSE`**, since it doesn't serve HTTP — it only sends messages to the queue.
