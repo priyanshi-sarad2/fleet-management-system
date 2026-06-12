@@ -866,6 +866,8 @@ The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is
 
 ## Building and pushing the image to ECR
 
+> Note: these are the **manual** build-and-push steps. In this project this is done **automatically via AWS CodePipeline** — the steps below are just to show what happens under the hood.
+
 First set the registry and region (replace `<account-id>` with your AWS account ID):
 
 ```bash
