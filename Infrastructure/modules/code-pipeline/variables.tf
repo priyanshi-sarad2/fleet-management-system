@@ -201,11 +201,6 @@ variable "helm_values_file" {
   default     = null
 }
 
-variable "app_name" {
-  description = "Application name (used across build/deploy stages)"
-  type        = string
-  default     = null
-}
 variable "build_compute_type" {
   type    = string
   default = null

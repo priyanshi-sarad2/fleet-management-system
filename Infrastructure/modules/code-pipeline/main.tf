@@ -222,7 +222,7 @@ resource "aws_codebuild_project" "ecs_build_project" {
     }
     environment_variable {
       name  = "APP_NAME"
-      value = var.app_name
+      value = var.app
     }
     environment_variable {
       name  = "S3_BUCKET"
@@ -362,7 +362,3 @@ resource "aws_codepipeline_webhook" "pipeline_webhook" {
   }
 }
 
-
-
-# The GitHub CodeConnections connection is created once at the root and its ARN
-# is passed in via var.connection_arn (this module does not create the connection).

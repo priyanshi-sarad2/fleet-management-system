@@ -94,7 +94,6 @@ module "code-pipeline" {
   enable_deploy_stage     = !each.value.deploy_on_eks
   enable_invalidate_stage = !each.value.deploy_on_eks
 
-  app_name           = each.key
   s3_env_bucket      = "${var.project_name}-env-files"
   s3_env_bucket_path = "${each.key}/${var.env}"
 
