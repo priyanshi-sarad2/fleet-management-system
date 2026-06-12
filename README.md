@@ -863,3 +863,47 @@ Why multi-stage: the build tools (Maven, JDK) and source code stay in the build 
 - `ENTRYPOINT ["java","-jar","app.jar"]` — runs the app. The **exec form** (JSON array) makes `java` run as **PID 1**, so it receives stop signals for a clean shutdown.
 
 The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is identical but **without `EXPOSE`**, since it doesn't serve HTTP — it only sends messages to the queue.
+
+## Building and pushing the image to ECR
+
+First set the registry and region (replace `<account-id>` with your AWS account ID):
+
+```bash
+export AWS_PROFILE=fleetman-prod
+export AWS_REGION=us-east-1
+export ECR=<account-id>.dkr.ecr.us-east-1.amazonaws.com
+```
+
+**1. Log in to ECR** (authenticates Docker to your private registry):
+
+```bash
+aws ecr get-login-password --region "$AWS_REGION" --profile fleetman-prod \
+  | docker login --username AWS --password-stdin "$ECR"
+```
+
+**2. Build the image** (run from the service folder, tagging it with the ECR repo URL):
+
+```bash
+cd k8s-fleetman-api-gateway
+docker build -t "$ECR/fleetman-api-gateway:v1" .
+```
+
+**3. Push it to ECR:**
+
+```bash
+docker push "$ECR/fleetman-api-gateway:v1"
+```
+
+Repeat for the other two services from their folders:
+
+```bash
+cd ../k8s-fleetman-position-simulator
+docker build -t "$ECR/fleetman-position-simulator:v1" .
+docker push "$ECR/fleetman-position-simulator:v1"
+
+cd ../k8s-fleetman-position-tracker
+docker build -t "$ECR/fleetman-position-tracker:v1" .
+docker push "$ECR/fleetman-position-tracker:v1"
+```
+
+The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
