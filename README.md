@@ -762,3 +762,11 @@ Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** on
 ---
 
 # Docker
+
+For our three microservices — **API Gateway**, **Position Simulator**, and **Position Tracker** — we build a **Docker image** for each.
+
+The great thing about a Docker image is that it **encapsulates the entire application into one image**: it contains the source code *and* all the dependencies the application needs to run. The image has everything the app needs, so it runs the same way everywhere.
+
+Once an image is built, we can push it to a **registry** — Docker Hub or **Amazon ECR**. From there, we can deploy the application easily anywhere using that image — an on-prem Docker host, a Kubernetes cluster, or the cloud.
+
+In this project, each of the three apps has its own **Dockerfile**, and the built images are pushed to the **ECR repositories created via Terraform**.
