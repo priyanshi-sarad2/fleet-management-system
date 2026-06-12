@@ -233,7 +233,6 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 - eks-pod-identity-agent — lets pods assume IAM roles (pod identity)
 - kube-proxy — manages network routing rules on each node
 - vpc-cni — assigns VPC IP addresses to pods
-- ebs-csi-driver — provisions EBS volumes for persistent storage
 
 #### S3
 
@@ -755,9 +754,8 @@ The add-ons installed in this cluster:
 - **kube-proxy** — manages network routing rules on each node so traffic reaches the right pods
 - **vpc-cni** — assigns VPC IP addresses to the pods (Amazon VPC networking for pods)
 - **eks-pod-identity-agent** — lets pods assume IAM roles (pod identity)
-- **ebs-csi-driver** — provisions EBS volumes for persistent storage
 
-Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` and `ebs-csi-driver` are added on top, for pod-level IAM access and persistent (EBS-backed) storage respectively.
+Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` is added on top, for pod-level IAM access. (We don't need the EBS CSI driver here, since MongoDB Atlas is a managed database — there are no in-cluster volumes that need persistent EBS storage.)
 
 ---
 
