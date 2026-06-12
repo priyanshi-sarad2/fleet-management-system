@@ -18,14 +18,14 @@ phases:
     commands:
       - echo Building the Docker image...
       - TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
-      - docker build -t ${REPOSITORY_URI}:${TAG} .
+      - docker build -t ${ECR_REPOSITORY_URI}:${TAG} .
 
   post_build:
     commands:
       - echo Pushing the Docker image...
-      - docker push ${REPOSITORY_URI}:${TAG}
+      - docker push ${ECR_REPOSITORY_URI}:${TAG}
       - echo Generating imagedefinitions.json...
-      - printf '[{"name":"%s","imageUri":"%s"}]\n' "${CONTAINER_NAME}" "${REPOSITORY_URI}:${TAG}" > imagedefinitions.json
+      - printf '[{"name":"%s","imageUri":"%s"}]\n' "${CONTAINER_NAME}" "${ECR_REPOSITORY_URI}:${TAG}" > imagedefinitions.json
       - cat imagedefinitions.json
       - python3 -c 'import json; json.load(open("imagedefinitions.json")); print("imagedefinitions.json is valid JSON")'
       - echo Writing image tag artifacts for EKS/Helm deploy...

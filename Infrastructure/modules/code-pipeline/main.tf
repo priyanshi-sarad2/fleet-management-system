@@ -213,7 +213,7 @@ resource "aws_codebuild_project" "eks_build_project" {
     privileged_mode = true
 
     environment_variable {
-      name  = "REPOSITORY_URI"
+      name  = "ECR_REPOSITORY_URI"
       value = var.ecr_repository_uri
     }
     environment_variable {
@@ -279,7 +279,7 @@ resource "aws_codebuild_project" "eks_deploy_project" {
       value = var.helm_values_file
     }
     environment_variable {
-      name  = "REPOSITORY_URI"
+      name  = "ECR_REPOSITORY_URI"
       value = var.ecr_repository_uri
     }
   }
