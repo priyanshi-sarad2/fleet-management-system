@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Helm renders this by calling the helper template "app.fullname" from templates/_helpers.tpl file.
+   # It builds a consistent resource name (usually the chart/app name from Chart.yaml), unless you set .Values.fullnameOverride.
+   # The "." means "use the current context" (this chart's .Values, .Release, .Chart, etc.) and pass it into the helper.
+  namespace: {{ required "values.yaml: namespace is required" .Values.namespace | quote }}
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:  # deployment specification
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ default 1 .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "app.selectorLabels" . | nindent 6 }}
+  template:  # pod template
+    metadata:  # metadata of pod (its name and labels)
+      labels:
+        {{- include "app.selectorLabels" . | nindent 8 }}
+      {{- $hasPodAnn := .Values.podAnnotations }}
+      {{- $hasCfg := .Values.configmap.create }}
+      {{- if or $hasCfg $hasPodAnn }}
+      annotations:
+        {{- if $hasCfg }}
+        # Annotations are extra metadata on the Pod template. Here we store a checksum (hash) of the rendered ConfigMap.
+        # When the ConfigMap changes, the checksum value changes, so Kubernetes rolls out new Pods to pick up the new config.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+    spec:  # pod spec
+      serviceAccountName: {{ include "app.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "app.name" . }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ default "Always" .Values.image.pullPolicy }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ coalesce .Values.containerPort .Values.service.targetPort .Values.service.port 80 }}
+              protocol: TCP
+          {{- if or .Values.configmap.create .Values.configmap.nameOverride .Values.secret.create .Values.secret.nameOverride .Values.existingSecret.name }}
+          envFrom:
+            {{- if or .Values.configmap.create .Values.configmap.nameOverride }}
+            - configMapRef:
+                name: {{ include "app.configmapName" . }}
+            {{- end }}
+            {{- if or .Values.secret.create .Values.secret.nameOverride }}
+            - secretRef:
+                name: {{ include "app.secretName" . }}
+            {{- else if .Values.existingSecret.name }}
+            - secretRef:
+                name: {{ .Values.existingSecret.name }}
+            {{- end }}
+          {{- end }}
+          {{- if or .Values.envVars .Values.extraEnv }}
+          env:
+            {{- range $k, $v := .Values.envVars }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.probes.liveness }}
+          {{- if .enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ default "/healthz" .path | quote }}
+              port: http
+            initialDelaySeconds: {{ default 10 .initialDelaySeconds }}
+            periodSeconds: {{ default 10 .periodSeconds }}
+            timeoutSeconds: {{ default 2 .timeoutSeconds }}
+            failureThreshold: {{ default 3 .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.probes.readiness }}
+          {{- if .enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ default "/readyz" .path | quote }}
+              port: http
+            initialDelaySeconds: {{ default 5 .initialDelaySeconds }}
+            periodSeconds: {{ default 10 .periodSeconds }}
+            timeoutSeconds: {{ default 2 .timeoutSeconds }}
+            failureThreshold: {{ default 3 .failureThreshold }}
+          {{- end }}
+          {{- end }}
+
+      

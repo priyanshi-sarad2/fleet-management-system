@@ -12,12 +12,12 @@ apps = ["api-gateway", "position-simulator", "position-tracker"]
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = true
-create_ecr_repository                 = true
-create_amazon_mq                      = true
-create_eks_cluster                    = true
+create_vpc                            = false
+create_ecr_repository                 = false
+create_amazon_mq                      = false
+create_eks_cluster                    = false
 create_cloudfront_fleetman_webapp     = false
-create_codepipeline                   = true
+create_codepipeline                   = false
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
 

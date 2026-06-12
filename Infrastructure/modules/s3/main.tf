@@ -1,6 +1,6 @@
 ########     S3 Bucket Module     ########
 
-module "s3-bucket-static" {
+module "s3-bucket" {
   source                   = "terraform-aws-modules/s3-bucket/aws"
   version                  = "5.9.1"
   create_bucket            = var.create_bucket

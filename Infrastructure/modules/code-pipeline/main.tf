@@ -320,11 +320,3 @@ EOF
     type = "NO_ARTIFACTS"
   }
 }
-
-
-
-
-
-
-
-

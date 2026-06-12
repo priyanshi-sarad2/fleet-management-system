@@ -11,7 +11,7 @@ module "iam-custom-policy-codepipeline" {
   attach_cloudwatch_policy = false
   attach_s3_bucket_policy  = false
   attach_cloudfront_access = false
-  attach_iam_role          = false
+  attach_iam_role          = true
   attach_ecr_policy        = true
   attach_eks_policy        = true
   eks_cluster_name         = "${var.project_name}-eks-cluster"
