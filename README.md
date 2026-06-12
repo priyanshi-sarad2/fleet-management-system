@@ -847,6 +847,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 It's a **multi-stage build** — a heavy "build" stage that compiles the JAR, and a small "runtime" stage that just runs it.
 
+Why multi-stage: the build tools (Maven, JDK) and source code stay in the build stage and are **thrown away** — only the final jar is carried into the runtime image. This keeps the final image **much smaller**, gives it a **smaller attack surface** (no compilers/source shipped to production), and makes it faster to push and pull.
+
 **Build stage**
 - `FROM maven:3.6.3-jdk-8-slim AS build` — an image with **Maven + JDK**, needed to compile the code.
 - `COPY pom.xml` then `mvn dependency:go-offline` — downloads all dependencies **first**, as its own layer. Docker caches layers, so this only re-runs when `pom.xml` changes — everyday **code edits don't re-download dependencies**, which makes rebuilds fast.
