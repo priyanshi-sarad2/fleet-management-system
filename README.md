@@ -864,7 +864,7 @@ Why multi-stage: the build tools (Maven, JDK) and source code stay in the build 
 
 The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is identical but **without `EXPOSE`**, since it doesn't serve HTTP — it only sends messages to the queue.
 
-## Building and pushing the image to ECR
+## Building and pushing the image to ECR (manual)
 
 > Note: these are the **manual** build-and-push steps. In this project this is done **automatically via AWS CodePipeline** — the steps below are just to show what happens under the hood.
 
