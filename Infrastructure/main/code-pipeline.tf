@@ -59,7 +59,6 @@ module "s3-bucket-codepipeline-artifacts" {
 
 
 ########       Shared GitHub connection (one for all pipelines)        ########
-# Created once and shared by every pipeline.
 resource "aws_codestarconnections_connection" "github" {
   count         = var.create_codepipeline ? 1 : 0
   name          = "${var.project_name}-github"
@@ -106,7 +105,7 @@ module "code-pipeline" {
   ecs_build_project_name  = "${var.project_name}-${each.key}-build-${var.env}"
   eks_deploy_project_name = "${var.project_name}-${each.key}-eks-${var.env}"
   eks_cluster_name        = "${var.project_name}-eks-cluster"
-  k8s_namespace           = var.project_namespace
+  k8s_namespace           = var.project_k8s_namespace
   helm_release_name       = "${var.project_name}-${each.key}-${var.env}"
   helm_chart_path         = "helm-chart"
   helm_values_file        = "helm-chart/values/${var.env}-values.yaml"

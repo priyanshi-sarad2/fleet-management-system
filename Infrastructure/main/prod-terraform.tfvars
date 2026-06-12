@@ -16,8 +16,8 @@ create_vpc                            = true
 create_ecr_repository                 = true
 create_amazon_mq                      = true
 create_eks_cluster                    = false
-create_eks_ebs_csi_driver_addon       = false
 create_cloudfront_fleetman_webapp     = false
+create_codepipeline                   = true
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
 
@@ -172,7 +172,25 @@ node_group_iam_role_additional_policies = {
 }
 
 
-########     AWS Code Pipeline     ########
+########    AWS Code Pipeline    ########
+project_k8s_namespace = "fleetman-prod"
+
+codepipeline = {
+  "api-gateway" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }
+  "position-simulator" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }
+  "position-tracker" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }
 
 
 
@@ -197,23 +215,3 @@ grafana_network_access_control = {}
 associate_license              = false
 
 
-########    CodePipeline (one pipeline per app)    ########
-create_codepipeline = true
-project_namespace   = "default"
-
-codepipeline = {
-  "api-gateway" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }
-  "position-simulator" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }
-  "position-tracker" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }

@@ -506,7 +506,7 @@ variable "create_codepipeline" {
   default     = false
 }
 
-variable "project_namespace" {
+variable "project_k8s_namespace" {
   description = "Kubernetes namespace the apps are deployed into"
   type        = string
   default     = "default"
