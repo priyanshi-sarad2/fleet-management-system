@@ -121,7 +121,7 @@ eks_authentication_mode = "API"
 # Since the IAM user who created the cluster only has admin access to cluster
 # I am giving the root account full admin access to this cluster as well
 eks_access_entry_account_root_admin = {
-  principal_arn = "arn:aws:iam::331860160408:root"
+  principal_arn = "arn:aws:iam::176777036446:root"
 
   # Remember that even though root account has access to entire AWS - but it will not automatically will have access to eks cluster
 
@@ -144,11 +144,8 @@ eks_endpoint_public_access_cidrs = ["0.0.0.0/0"]
 
 ##########    IRSA (IAM Roles for Service Accounts)    ##########
 enable_irsa = true
-# Extra OIDC audiences; the EKS module always includes "sts.amazonaws.com" by default for IRSA.
 openid_connect_audiences = []
-# Keep true: auto-detect and include the OIDC root CA thumbprint for the IAM OIDC provider.
 include_oidc_root_ca_thumbprint = true
-# Rarely needed: additional OIDC server cert thumbprints (leave empty unless you have a custom TLS chain).
 custom_oidc_thumbprints = []
 
 
@@ -175,7 +172,63 @@ node_group_iam_role_additional_policies = {
 }
 
 
+########     AWS Code Pipeline     ########
 
+notification_queue_pipeline_env_vars = [
+  {
+    name  = "STAGE"
+    value = "prod"
+  },
+  {
+    name  = "REGION"
+    value = "us-east-1"
+  },
+  {
+    name  = "S3_BUCKET"
+    value = "eks-riddhi-gsp-env-files"
+  },
+  {
+    name  = "BUCKET_PATH"
+    value = "microservices/notification-queue-handler/prod"
+  }
+]
+
+document_svc_pipeline_env_vars = [
+  {
+    name  = "STAGE"
+    value = "prod"
+  },
+  {
+    name  = "REGION"
+    value = "us-east-1"
+  },
+  {
+    name  = "S3_BUCKET"
+    value = "eks-riddhi-gsp-env-files"
+  },
+  {
+    name  = "BUCKET_PATH"
+    value = "microservices/document-service/prod"
+  }
+]
+admin_pipeline_env_vars = [
+  {
+    name  = "S3_BUCKET"
+    value = "eks-riddhi-gsp-env-files"
+  },
+  {
+    name  = "BUCKET_PATH"
+    value = "eks-riddhi-gsp-admin/prod"
+  }
+]
+
+full_repo_path_admin                      = "webelight-repos/riddhi-gsp/riddhi-gsp-admin"
+full_repo_path_api                        = "webelight-repos/riddhi-gsp/riddhi-gsp-api"
+full_repo_path_user_mgmt                  = "webelight-repos/riddhi-gsp/riddhi-gsp-user-management-service"
+full_repo_path_workflow_mgmt              = "webelight-repos/microservices/workflow-management"
+full_repo_path_notification               = "webelight-repos/microservices/notification-service"
+full_repo_path_notification_queue_handler = "webelight-repos/microservices/notification-queue-handler"
+full_repo_path_document_svc               = "webelight-repos/microservices/document-microservice"
 
 
 
@@ -195,3 +248,26 @@ grafana_role_associations = {
 }
 grafana_network_access_control = {}
 associate_license              = false
+
+
+########    CodePipeline (one pipeline per app)    ########
+create_codepipeline     = true
+project_namespace       = "default"
+codestar_connection_arn = null # set to your authorized GitHub CodeConnections ARN
+
+codepipeline = {
+  "api-gateway" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }
+  "position-simulator" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }
+  "position-tracker" = {
+    deploy_on_eks  = true
+    repo_full_path = "priyanshi-sarad2/fleet-management-system"
+    repo_branch    = "main"
+  }

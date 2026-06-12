@@ -493,3 +493,42 @@ variable "associate_license" {
   default     = false
 }
 
+######## CodePipeline ########
+
+variable "name" {
+  description = "Project name used as an identifier on resources (e.g. the artifacts bucket prefix)"
+  type        = string
+}
+
+variable "create_codepipeline" {
+  description = "Controls whether the CodePipelines (and their IAM role + artifacts bucket) are created"
+  type        = bool
+  default     = false
+}
+
+variable "project_namespace" {
+  description = "Kubernetes namespace the apps are deployed into"
+  type        = string
+  default     = "default"
+}
+
+variable "codestar_connection_arn" {
+  description = "Existing CodeStar/CodeConnections connection ARN (GitHub). Provide an authorized connection ARN."
+  type        = string
+  default     = null
+}
+
+variable "codepipeline" {
+  description = <<-EOT
+    CodePipelines keyed by app name (e.g. "api-gateway"). One pipeline is created per entry.
+    deploy_on_eks = true  -> Source -> ECR build -> EKS (Helm) deploy
+    deploy_on_eks = false -> Source -> build -> S3 deploy -> CloudFront invalidate (static webapp path)
+  EOT
+  type = map(object({
+    deploy_on_eks  = bool
+    repo_full_path = string
+    repo_branch    = optional(string, "main")
+  }))
+  default = {}
+}
+
