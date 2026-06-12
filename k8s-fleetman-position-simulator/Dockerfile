@@ -14,12 +14,15 @@ RUN mvn -q -B -DskipTests package
 FROM eclipse-temurin:8-jre-alpine
 LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
 
-# Run as a non-root user (security best practice)
-RUN addgroup -S app && adduser -S app -G app
-USER app
+# Create a non-root user/group and an app dir it owns (security best practice)
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app && chown app:app /app
 
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+# Copy the jar out of the build stage and give ownership to the app user
+COPY --chown=app:app --from=build /app/target/*.jar app.jar
+
+USER app
 
 # No ports are exposed — the simulator only sends messages to the queue.
 ENTRYPOINT ["java", "-jar", "app.jar"]
