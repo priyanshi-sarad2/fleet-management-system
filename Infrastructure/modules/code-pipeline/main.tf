@@ -229,7 +229,6 @@ resource "aws_codebuild_project" "eks_build_project" {
       value = var.region
     }
   }
-
   artifacts {
     type = "CODEPIPELINE"
   }
@@ -283,9 +282,7 @@ resource "aws_codebuild_project" "eks_deploy_project" {
       value = var.ecr_repository_uri
     }
   }
-
   artifacts {
-    # When using CodePipeline as the source, CodeBuild requires the artifacts type to be CODEPIPELINE
     type = "CODEPIPELINE"
   }
 }
@@ -319,7 +316,6 @@ phases:
       - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths '/*'
 EOF
   }
-
   artifacts {
     type = "NO_ARTIFACTS"
   }
@@ -331,26 +327,4 @@ EOF
 
 
 
-#####      AWS Code Pipeline Webhook -> to trigger pipeline     ####
-resource "aws_codepipeline_webhook" "pipeline_webhook" {
-  count           = var.create_codepipeline_webhook ? 1 : 0
-  name            = "${var.pipeline_name}-webhook"
-  authentication  = var.pipeline_webhook_authentication
-  target_action   = "PullCode"
-  target_pipeline = aws_codepipeline.codepipeline.name
-
-  lifecycle {
-    ignore_changes = [authentication_configuration[0].secret_token]
-  }
-
-  authentication_configuration {
-    secret_token     = var.pipeline_webhook_authentication == "GITHUB_HMAC" ? var.aws_secret_string : null
-    allowed_ip_range = var.pipeline_webhook_authentication == "IP" ? "109.169.37.51/32" : null // Jenkins
-  }
-
-  filter {
-    json_path    = "$.ref"
-    match_equals = var.pipeline_webhook_filter_match
-  }
-}
 

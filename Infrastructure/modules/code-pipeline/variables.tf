@@ -114,18 +114,6 @@ variable "aws_secret_string" {
   type    = string
   default = null
 }
-variable "pipeline_webhook_authentication" {
-  type    = string
-  default = null
-}
-variable "pipeline_webhook_filter_match" {
-  type    = string
-  default = null
-}
-variable "create_codepipeline_webhook" {
-  type    = string
-  default = null
-}
 variable "env_files_s3_bucket" {
   type    = string
   default = null

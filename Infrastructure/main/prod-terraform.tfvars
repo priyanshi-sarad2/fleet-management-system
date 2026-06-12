@@ -175,22 +175,14 @@ node_group_iam_role_additional_policies = {
 ########    AWS Code Pipeline    ########
 project_k8s_namespace = "fleetman-prod"
 
+full_repo_path = "priyanshi-sarad2/fleet-management-system"
+repo_branch    = "main"
+
 codepipeline = {
-  "api-gateway" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }
-  "position-simulator" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }
-  "position-tracker" = {
-    deploy_on_eks  = true
-    repo_full_path = "priyanshi-sarad2/fleet-management-system"
-    repo_branch    = "main"
-  }
+  "api-gateway"        = { deploy_on_eks = true }
+  "position-simulator" = { deploy_on_eks = true }
+  "position-tracker"   = { deploy_on_eks = true }
+}
 
 
 

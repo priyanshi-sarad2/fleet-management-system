@@ -512,6 +512,17 @@ variable "project_k8s_namespace" {
   default     = "default"
 }
 
+variable "full_repo_path" {
+  description = "GitHub repo (owner/repo) that all pipelines source from (monorepo)"
+  type        = string
+}
+
+variable "repo_branch" {
+  description = "Branch the pipelines source from"
+  type        = string
+  default     = "main"
+}
+
 variable "codepipeline" {
   description = <<-EOT
     CodePipelines keyed by app name (e.g. "api-gateway"). One pipeline is created per entry.
@@ -519,9 +530,7 @@ variable "codepipeline" {
     deploy_on_eks = false -> Source -> build -> S3 deploy -> CloudFront invalidate (static webapp path)
   EOT
   type = map(object({
-    deploy_on_eks  = bool
-    repo_full_path = string
-    repo_branch    = optional(string, "main")
+    deploy_on_eks = bool
   }))
   default = {}
 }

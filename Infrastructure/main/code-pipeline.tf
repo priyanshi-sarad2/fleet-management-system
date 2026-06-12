@@ -77,10 +77,11 @@ module "code-pipeline" {
   for_each = var.create_codepipeline ? var.codepipeline : {}
   source   = "../modules/code-pipeline"
 
-  name          = var.project_name
-  app           = each.key
-  env           = var.env
-  pipeline_name = "${var.project_name}-${each.key}-${var.env}"
+  name            = var.project_name
+  app             = each.key
+  env             = var.env
+  region          = var.region
+  pipeline_name   = "${var.project_name}-${each.key}-${var.env}"
 
   # this will be there for all the pipelines
   enable_source_stage     = true
@@ -103,17 +104,17 @@ module "code-pipeline" {
 
   eks_build_project_name  = "${var.project_name}-${each.key}-eks-build-${var.env}"
   eks_deploy_project_name = "${var.project_name}-${each.key}-eks-deploy-${var.env}"
+
+  # kubernetes related variables
   eks_cluster_name        = "${var.project_name}-eks-cluster"
   k8s_namespace           = var.project_k8s_namespace
   helm_release_name       = "${var.project_name}-${each.key}-${var.env}"
   helm_chart_path         = "helm-chart"
   helm_values_file        = "helm-chart/values/${var.env}-values.yaml"
 
-  full_repo_path = each.value.repo_full_path
-  repo_branch    = each.value.repo_branch
+  full_repo_path = var.full_repo_path
+  repo_branch    = var.repo_branch
 
-  codestart_connection_name   = "${each.key}-${var.env}"
-  connection_arn              = local.github_connection_arn
-  region                      = var.region
-  create_codepipeline_webhook = false
+  codestart_connection_name = "${each.key}-${var.env}"
+  connection_arn            = local.github_connection_arn
 }
