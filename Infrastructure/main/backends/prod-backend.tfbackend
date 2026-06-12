@@ -1,7 +1,7 @@
 # Bucket needs to be created in advance
 # This will store the terraform state for the project
 
-bucket  = "fleetman-tf-state"
+bucket  = "fleetman-terraform"
 key     = "prod/terraform.tfstate"
 region  = "us-east-1"
 encrypt = true
