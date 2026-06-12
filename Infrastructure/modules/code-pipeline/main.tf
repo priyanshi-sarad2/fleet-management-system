@@ -40,7 +40,7 @@ resource "aws_codepipeline" "codepipeline" {
         output_artifacts = ["source_output"]
 
         configuration = {
-          ConnectionArn    = local.connection_arn
+          ConnectionArn    = var.connection_arn
           FullRepositoryId = var.full_repo_path
           BranchName       = var.repo_branch
         }
@@ -364,13 +364,5 @@ resource "aws_codepipeline_webhook" "pipeline_webhook" {
 
 
 
-#####    For Connection with GitHub    ####
-resource "aws_codestarconnections_connection" "github-connection" {
-  count         = var.connection_arn == null ? 1 : 0
-  name          = "${var.name}-${var.app}"
-  provider_type = "GitHub"
-}
-
-locals {
-  connection_arn = var.connection_arn != null ? var.connection_arn : aws_codestarconnections_connection.github-connection[0].arn
-}
+# The GitHub CodeConnections connection is created once at the root and its ARN
+# is passed in via var.connection_arn (this module does not create the connection).
