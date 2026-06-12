@@ -1,4 +1,4 @@
-########     AWS Code Pipeline, Build, Deploy, Webhook     ########
+########     AWS Code Pipeline, Build, Deploy     ########
 
 # Added one lifecycle below for ignoring one redundant change in stage of code-pipeline
 
@@ -128,27 +128,6 @@ resource "aws_codepipeline" "codepipeline" {
   }
 
   dynamic "stage" {
-    for_each = var.enable_ecs_deploy_stage ? [1] : []
-    content {
-      name = "ECSDeploy"
-      action {
-        name            = "DeployToECS"
-        category        = "Deploy"
-        owner           = "AWS"
-        provider        = "ECS"
-        input_artifacts = ["build_output"]
-        version         = "1"
-
-        configuration = {
-          ClusterName = var.ecs_cluster_name
-          ServiceName = var.ecs_service_name
-          FileName    = "imagedefinitions.json"
-        }
-      }
-    }
-  }
-
-  dynamic "stage" {
     for_each = var.enable_eks_deploy_stage ? [1] : []
     content {
       name = "EKSDeploy"
@@ -167,33 +146,17 @@ resource "aws_codepipeline" "codepipeline" {
     }
   }
 
-  lifecycle {
-    ignore_changes = [
-      stage[0].action[0].configuration["OutputArtifactFormat"],
-      stage[1].action[0].configuration["OutputArtifactFormat"],
-      stage[2].action[0].configuration["OutputArtifactFormat"],
-      stage[3].action[0].configuration["OutputArtifactFormat"],
-      stage[4].action[0].configuration["OutputArtifactFormat"]
-    ]
-  }
+  # lifecycle {
+  #   ignore_changes = [
+  #     stage[0].action[0].configuration["OutputArtifactFormat"],
+  #     stage[1].action[0].configuration["OutputArtifactFormat"],
+  #     stage[2].action[0].configuration["OutputArtifactFormat"],
+  #     stage[3].action[0].configuration["OutputArtifactFormat"],
+  #     stage[4].action[0].configuration["OutputArtifactFormat"]
+  #   ]
+  # }
 
 }
-
-
-
-#####    For Connection with GitHub and GitLab   ####
-# Create connection only if connection_arn is not provided
-resource "aws_codestarconnections_connection" "gitlab-connection" {
-  count    = var.connection_arn == null ? 1 : 0
-  name     = var.codestart_connection_name
-  host_arn = var.codestart_connection_gitlab_host_arn
-}
-
-# Use local value to determine which connection ARN to use
-locals {
-  connection_arn = var.connection_arn != null ? var.connection_arn : aws_codestarconnections_connection.gitlab-connection[0].arn
-}
-
 
 
 
@@ -226,41 +189,6 @@ resource "aws_codebuild_project" "build_project" {
 
   artifacts {
     type = "CODEPIPELINE"
-  }
-}
-
-
-#####      AWS Code Build Project  -> for Invalidate Cloudfront stage     ####
-resource "aws_codebuild_project" "invalidate_cloudfront" {
-  count        = var.enable_invalidate_stage ? 1 : 0
-  name         = var.cloudfront_project_name
-  service_role = var.iam_role_arn
-
-  environment {
-    compute_type = "BUILD_GENERAL1_SMALL"
-    image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    type         = "LINUX_CONTAINER"
-
-    environment_variable {
-      name  = "DISTRIBUTION_ID"
-      value = var.cloudfront_distribution_id
-    }
-  }
-
-  source {
-    type      = "NO_SOURCE" # No code repo source for this project
-    buildspec = <<EOF
-version: 0.2
-phases:
-  build:
-    commands:
-      - echo "Invalidating CloudFront distribution..."
-      - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths '/*'
-EOF
-  }
-
-  artifacts {
-    type = "NO_ARTIFACTS"
   }
 }
 
@@ -371,6 +299,44 @@ resource "aws_codebuild_project" "eks_deploy_project" {
 }
 
 
+#####      AWS Code Build Project  -> for Invalidate Cloudfront stage     ####
+resource "aws_codebuild_project" "invalidate_cloudfront" {
+  count        = var.enable_invalidate_stage ? 1 : 0
+  name         = var.cloudfront_project_name
+  service_role = var.iam_role_arn
+
+  environment {
+    compute_type = "BUILD_GENERAL1_SMALL"
+    image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type         = "LINUX_CONTAINER"
+
+    environment_variable {
+      name  = "DISTRIBUTION_ID"
+      value = var.cloudfront_distribution_id
+    }
+  }
+
+  source {
+    type      = "NO_SOURCE" # No code repo source for this project
+    buildspec = <<EOF
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo "Invalidating CloudFront distribution..."
+      - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths '/*'
+EOF
+  }
+
+  artifacts {
+    type = "NO_ARTIFACTS"
+  }
+}
+
+
+
+
+
 
 
 #####      AWS Code Pipeline Webhook -> to trigger pipeline     ####
@@ -394,4 +360,17 @@ resource "aws_codepipeline_webhook" "pipeline_webhook" {
     json_path    = "$.ref"
     match_equals = var.pipeline_webhook_filter_match
   }
+}
+
+
+
+#####    For Connection with GitHub    ####
+resource "aws_codestarconnections_connection" "github-connection" {
+  count         = var.connection_arn == null ? 1 : 0
+  name          = "${var.name}-${var.app}"
+  provider_type = "GitHub"
+}
+
+locals {
+  connection_arn = var.connection_arn != null ? var.connection_arn : aws_codestarconnections_connection.github-connection[0].arn
 }

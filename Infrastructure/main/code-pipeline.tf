@@ -58,6 +58,22 @@ module "s3-bucket-codepipeline-artifacts" {
 }
 
 
+########       Shared GitHub connection (one for all pipelines)        ########
+# Created once and shared by every pipeline. If you'd rather use an existing
+# connection, set var.codestar_connection_arn and this won't be created.
+resource "aws_codestarconnections_connection" "github" {
+  count         = var.create_codepipeline && var.codestar_connection_arn == null ? 1 : 0
+  name          = "${var.project_name}-github"
+  provider_type = "GitHub"
+}
+
+locals {
+  github_connection_arn = var.codestar_connection_arn != null ? var.codestar_connection_arn : (
+    var.create_codepipeline ? aws_codestarconnections_connection.github[0].arn : null
+  )
+}
+
+
 ########       AWS Code Pipelines    ########
 # Keyed by app name (api-gateway, position-simulator, position-tracker).
 # deploy_on_eks = true  -> Source -> ECR build -> EKS (Helm) deploy
@@ -102,7 +118,7 @@ module "code-pipeline" {
   repo_branch    = each.value.repo_branch
 
   codestart_connection_name   = "${each.key}-${var.env}"
-  connection_arn              = var.codestar_connection_arn
+  connection_arn              = local.github_connection_arn
   region                      = var.region
   create_codepipeline_webhook = false
 }
