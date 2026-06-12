@@ -65,28 +65,31 @@ resource "aws_codestarconnections_connection" "github" {
   provider_type = "GitHub"
 }
 
+# with this we are setting the "github_connection_arn" local variable value
 locals {
   github_connection_arn = var.create_codepipeline ? aws_codestarconnections_connection.github[0].arn : null
 }
 
 
 ########       AWS Code Pipelines    ########
-# Keyed by app name (api-gateway, position-simulator, position-tracker).
-# deploy_on_eks = true  -> Source -> ECR build -> EKS (Helm) deploy
-# deploy_on_eks = false -> Source -> build -> S3 deploy -> CloudFront invalidate (static webapp path)
 
 module "code-pipeline" {
   for_each = var.create_codepipeline ? var.codepipeline : {}
   source   = "../modules/code-pipeline"
 
   name          = var.project_name
-  app           = "code-pipeline-${each.key}"
+  app           = each.key
   env           = var.env
   pipeline_name = "${var.project_name}-${each.key}-${var.env}"
 
+  # this will be there for all the pipelines
   enable_source_stage     = true
+
+  # these two will be created only if deploy_on_eks is true
   enable_ecr_build_stage  = each.value.deploy_on_eks
   enable_eks_deploy_stage = each.value.deploy_on_eks
+
+  # these three will be created only if deploy_on_eks is false
   enable_build_stage      = !each.value.deploy_on_eks
   enable_deploy_stage     = !each.value.deploy_on_eks
   enable_invalidate_stage = !each.value.deploy_on_eks
