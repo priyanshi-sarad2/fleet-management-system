@@ -82,7 +82,7 @@ resource "aws_codepipeline" "codepipeline" {
         version          = "1"
 
         configuration = {
-          ProjectName = aws_codebuild_project.ecs_build_project[0].name
+          ProjectName = aws_codebuild_project.eks_build_project[0].name
         }
       }
     }
@@ -193,11 +193,11 @@ resource "aws_codebuild_project" "build_project" {
 }
 
 
-#####      AWS Code Build Project -> For ECS build stage      ####
-resource "aws_codebuild_project" "ecs_build_project" {
+#####      AWS Code Build Project -> For EKS build stage      ####
+resource "aws_codebuild_project" "eks_build_project" {
   count         = var.enable_ecr_build_stage ? 1 : 0
-  name          = var.ecs_build_project_name
-  description   = "ECS Build project for ${var.name}-${var.app}"
+  name          = var.eks_build_project_name
+  description   = "EKS Build project for ${var.name}-${var.app}"
   service_role  = var.iam_role_arn
   build_timeout = 60
 

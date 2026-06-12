@@ -148,7 +148,7 @@ variable "ecr_login" {
   type    = string
   default = null
 }
-variable "ecs_build_project_name" {
+variable "eks_build_project_name" {
   type    = string
   default = null
 }

@@ -94,15 +94,15 @@ module "code-pipeline" {
   enable_deploy_stage     = !each.value.deploy_on_eks
   enable_invalidate_stage = !each.value.deploy_on_eks
 
-  # ECR repo for this app, pulled from the for_each ECR module
   ecr_login          = module.ecr["ecr-${each.key}"].ecr_login_endpoint
   ecr_repository_uri = module.ecr["ecr-${each.key}"].ecr_repository_url
 
   codepipeline_artifacts_bucket = "${var.name}-codepipeline-artifacts-${var.env}"
+  
   iam_role_arn                  = var.create_codepipeline ? module.iam_assumable_role.iam_role_arn : ""
 
-  ecs_build_project_name  = "${var.project_name}-${each.key}-build-${var.env}"
-  eks_deploy_project_name = "${var.project_name}-${each.key}-eks-${var.env}"
+  eks_build_project_name  = "${var.project_name}-${each.key}-eks-build-${var.env}"
+  eks_deploy_project_name = "${var.project_name}-${each.key}-eks-deploy-${var.env}"
   eks_cluster_name        = "${var.project_name}-eks-cluster"
   k8s_namespace           = var.project_k8s_namespace
   helm_release_name       = "${var.project_name}-${each.key}-${var.env}"
