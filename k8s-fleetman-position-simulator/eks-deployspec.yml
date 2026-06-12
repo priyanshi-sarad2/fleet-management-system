@@ -20,15 +20,18 @@ phases:
       - echo "Configuring kubeconfig..."
 
       # I have used this command to generate kubeconfig gor my eks cluster as well
-      - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME" # this command creates a kubeconfig file in the home directory of the user running the command. In this case, it is the CodeBuild user.
+      - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME" 
+      # this command creates a kubeconfig file in the home directory of the user running the command. In this case, it is the CodeBuild user.
 
       # NOTE: avoid cluster-scope calls like `kubectl get ns` since the code-pipeline role does not have cluster-scope access. But I only gave it namespace scope access.
       - kubectl -n "$K8S_NAMESPACE" get pods >/dev/null
   build:
     commands:
       - echo "Deploying with Helm..."
-      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m # this command installs the Helm chart in the namespace and waits for the deployment to be ready.
+      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m 
+      # this command installs the Helm chart in the namespace and waits for the deployment to be ready.
       # If the release is already installed, this command will upgrade the release to the new version.
       # If the release is not installed, this command will install the release.
 
-      - kubectl -n "$K8S_NAMESPACE" rollout status deploy -l "app.kubernetes.io/instance=$HELM_RELEASE_NAME" --timeout=10m || true # this command waits for the deployment to be ready and then checks if it is ready.
+      - kubectl -n "$K8S_NAMESPACE" rollout status deploy -l "app.kubernetes.io/instance=$HELM_RELEASE_NAME" --timeout=10m || true 
+      # this command waits for the deployment to be ready and then checks if it is ready.

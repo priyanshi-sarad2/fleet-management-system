@@ -1,18 +1,9 @@
-## This is a global buildspec file - used to build and then be helpful for deploy stages for both ECS and EKS.
-
 version: 0.2
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region ${REGION} | docker login -u AWS --password-stdin ${ECR_LOGIN}
-      - echo Fetching environment variables from S3...
-      - aws s3 cp s3://${S3_BUCKET}/${BUCKET_PATH}/.env .env
-      - aws s3 cp s3://${S3_BUCKET}/${BUCKET_PATH}/private_key.pem private_key.pem
-      - aws s3 cp s3://${S3_BUCKET}/${BUCKET_PATH}/public_key.pem public_key.pem
-      - aws s3 cp s3://${S3_BUCKET}/${BUCKET_PATH}/cloudfront_private_key.pem private_key_cloudfront.pem
-      - ls -la
-      - cat .env
 
   build:
     commands:
@@ -24,26 +15,21 @@ phases:
     commands:
       - echo Pushing the Docker image...
       - docker push ${ECR_REPOSITORY_URI}:${TAG}
-      - echo Generating imagedefinitions.json...
-      - printf '[{"name":"%s","imageUri":"%s"}]\n' "${CONTAINER_NAME}" "${ECR_REPOSITORY_URI}:${TAG}" > imagedefinitions.json
-      - cat imagedefinitions.json
-      - python3 -c 'import json; json.load(open("imagedefinitions.json")); print("imagedefinitions.json is valid JSON")'
-      - echo Writing image tag artifacts for EKS/Helm deploy...
+      - echo Writing image tag artifact for EKS/Helm deploy...
       - printf "%s" "${TAG}" > image-tag.txt
 
 artifacts:
   files:
-    - imagedefinitions.json  # This file is needed for ECS deploy stage
-    - image-tag.txt         # This file is needed for EKS deploy stage
+    - image-tag.txt         # Image tag passed to the EKS deploy stage
     - eks-deployspec.yml    # EKS deploy stage buildspec (consumed from build_output)
-    - helm-chart/**/*       # This directory is needed for EKS deploy stage
+    - helm-chart/**/*       # Helm chart needed by the EKS deploy stage
   base-directory: .
 
-# For EKS deploy stage, we need the Helm chart to be available in the artifact that is passed to the next stage.
-# The Helm chart already exists in this repo; by adding `helm-chart/**/*` under `artifacts.files`, CodeBuild includes it in `build_output`.
-# Also, since each docker build + push creates a new image tag, we write the tag to `image-tag.txt` and pass it forward as part of `build_output`.
+# For the EKS deploy stage, the Helm chart must be available in the artifact passed to the next stage.
+# The Helm chart already exists in this repo; adding `helm-chart/**/*` under `artifacts.files` makes CodeBuild include it in `build_output`.
+# Each docker build + push creates a new image tag, so we write the tag to `image-tag.txt` and pass it forward as part of `build_output`.
 
-# Why eks-deployspec.yml is needed in the build output?
-# The build stage gets all repo data as input artifact - so it can use and take whichever file it needs.
-# But the deploy stage incomming input artifact will not have the complete repo data, it will only have the build output.
-# So, we need to pass the eks-deployspec.yml file to the deploy stage so that it can use it to deploy the Helm chart.
+# Why is eks-deployspec.yml needed in the build output?
+# The build stage gets all repo data as its input artifact, so it can use whichever file it needs.
+# But the deploy stage's incoming input artifact only has the build output, not the complete repo data.
+# So we pass eks-deployspec.yml to the deploy stage so it can use it to deploy the Helm chart.

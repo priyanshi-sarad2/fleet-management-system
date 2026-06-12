@@ -506,6 +506,12 @@ variable "create_codepipeline" {
   default     = false
 }
 
+variable "iam_role_policy_arns" {
+  description = "Pre-existing managed policy ARNs to attach to the CodePipeline role, in addition to the custom policy created here"
+  type        = list(string)
+  default     = []
+}
+
 variable "project_k8s_namespace" {
   description = "Kubernetes namespace the apps are deployed into"
   type        = string

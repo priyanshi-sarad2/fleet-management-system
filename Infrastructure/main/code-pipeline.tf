@@ -1,5 +1,5 @@
 ########       IAM ROLE        ########
-module "iam_custom_policy_codepipeline" {
+module "iam-custom-policy-codepipeline" {
   source                   = "../modules/iam-policy"
   create_iam_policy        = var.create_codepipeline
   name                     = var.project_name
@@ -7,31 +7,26 @@ module "iam_custom_policy_codepipeline" {
   env                      = var.env
   region                   = var.region
   iam_policy_name          = "${var.project_name}-${var.env}-codepipeline-custom-policy"
-  description              = "Custom policy for ECS Task"
+  description              = "Custom policy for CodePipeline"
   attach_cloudwatch_policy = false
-  attach_rds_policy        = false
-  attach_s3_bucket_policy  = true
-  attach_cloudfront_access = true
-  attach_lambda_access     = true
-  attach_iam_role          = true
+  attach_s3_bucket_policy  = false
+  attach_cloudfront_access = false
+  attach_iam_role          = false
   attach_ecr_policy        = true
-  attach_ecs_policy        = false
   attach_eks_policy        = true
   eks_cluster_name         = "${var.project_name}-eks-cluster"
   account_id               = var.account_id
-  # s3_bucket_names = ["${var.project_name}-admin-${var.env}", "${var.project_name}-env", "${var.name}-codepipeline-artifacts"]
-  # module.cloudfront-distribution-admin is a list due to `count`; make reference safe when disabled
-  cloudfront_distribution_arn = var.create_cloudfront_static_admin ? module.cloudfront-distribution-admin[0].cloudfront_distribution_arn : "arn:aws:cloudfront::000000000000:distribution/EXAMPLE"
 }
 
-module "iam_assumable_role" {
+module "iam-assumable-role-codepipeline" {
   source                    = "../modules/iam-role"
   create_iam_role           = var.create_codepipeline
-  iam_role_name             = "${var.project_name}-${var.env}-pipeline-role"
-  iam_role_policy_arns      = var.create_codepipeline ? concat(var.iam_role_policy_arns, [module.iam_custom_policy_codepipeline.arn]) : []
-  iam_trusted_role_services = var.iam_trusted_role_services
-  depends_on                = [module.iam_custom_policy_codepipeline]
+  iam_role_name             = "${var.project_name}-${var.env}-codepipeline"
+  iam_role_policy_arns      = var.create_codepipeline ? concat(var.iam_role_policy_arns, [module.iam-custom-policy-codepipeline.arn]) : []
+  iam_trusted_role_services = ["codepipeline.amazonaws.com"]
+  depends_on                = [module.iam-custom-policy-codepipeline]
 }
+
 
 
 ### S3 bucket for CodePipeline artifacts (used by all code pipelines)
@@ -100,7 +95,7 @@ module "code-pipeline" {
 
   codepipeline_artifacts_bucket = "${var.name}-codepipeline-artifacts-${var.env}"
   
-  iam_role_arn                  = var.create_codepipeline ? module.iam_assumable_role.iam_role_arn : ""
+  iam_role_arn                  = var.create_codepipeline ? module.iam-assumable-role-codepipeline.iam_role_arn : ""
 
   eks_build_project_name  = "${var.project_name}-${each.key}-eks-build-${var.env}"
   eks_deploy_project_name = "${var.project_name}-${each.key}-eks-deploy-${var.env}"
