@@ -512,12 +512,6 @@ variable "project_namespace" {
   default     = "default"
 }
 
-variable "codestar_connection_arn" {
-  description = "Existing CodeStar/CodeConnections connection ARN (GitHub). Provide an authorized connection ARN."
-  type        = string
-  default     = null
-}
-
 variable "codepipeline" {
   description = <<-EOT
     CodePipelines keyed by app name (e.g. "api-gateway"). One pipeline is created per entry.

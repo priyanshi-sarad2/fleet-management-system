@@ -174,61 +174,8 @@ node_group_iam_role_additional_policies = {
 
 ########     AWS Code Pipeline     ########
 
-notification_queue_pipeline_env_vars = [
-  {
-    name  = "STAGE"
-    value = "prod"
-  },
-  {
-    name  = "REGION"
-    value = "us-east-1"
-  },
-  {
-    name  = "S3_BUCKET"
-    value = "eks-riddhi-gsp-env-files"
-  },
-  {
-    name  = "BUCKET_PATH"
-    value = "microservices/notification-queue-handler/prod"
-  }
-]
 
-document_svc_pipeline_env_vars = [
-  {
-    name  = "STAGE"
-    value = "prod"
-  },
-  {
-    name  = "REGION"
-    value = "us-east-1"
-  },
-  {
-    name  = "S3_BUCKET"
-    value = "eks-riddhi-gsp-env-files"
-  },
-  {
-    name  = "BUCKET_PATH"
-    value = "microservices/document-service/prod"
-  }
-]
-admin_pipeline_env_vars = [
-  {
-    name  = "S3_BUCKET"
-    value = "eks-riddhi-gsp-env-files"
-  },
-  {
-    name  = "BUCKET_PATH"
-    value = "eks-riddhi-gsp-admin/prod"
-  }
-]
 
-full_repo_path_admin                      = "webelight-repos/riddhi-gsp/riddhi-gsp-admin"
-full_repo_path_api                        = "webelight-repos/riddhi-gsp/riddhi-gsp-api"
-full_repo_path_user_mgmt                  = "webelight-repos/riddhi-gsp/riddhi-gsp-user-management-service"
-full_repo_path_workflow_mgmt              = "webelight-repos/microservices/workflow-management"
-full_repo_path_notification               = "webelight-repos/microservices/notification-service"
-full_repo_path_notification_queue_handler = "webelight-repos/microservices/notification-queue-handler"
-full_repo_path_document_svc               = "webelight-repos/microservices/document-microservice"
 
 
 
@@ -251,9 +198,8 @@ associate_license              = false
 
 
 ########    CodePipeline (one pipeline per app)    ########
-create_codepipeline     = true
-project_namespace       = "default"
-codestar_connection_arn = null # set to your authorized GitHub CodeConnections ARN
+create_codepipeline = true
+project_namespace   = "default"
 
 codepipeline = {
   "api-gateway" = {

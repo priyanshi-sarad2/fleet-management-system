@@ -59,18 +59,15 @@ module "s3-bucket-codepipeline-artifacts" {
 
 
 ########       Shared GitHub connection (one for all pipelines)        ########
-# Created once and shared by every pipeline. If you'd rather use an existing
-# connection, set var.codestar_connection_arn and this won't be created.
+# Created once and shared by every pipeline.
 resource "aws_codestarconnections_connection" "github" {
-  count         = var.create_codepipeline && var.codestar_connection_arn == null ? 1 : 0
+  count         = var.create_codepipeline ? 1 : 0
   name          = "${var.project_name}-github"
   provider_type = "GitHub"
 }
 
 locals {
-  github_connection_arn = var.codestar_connection_arn != null ? var.codestar_connection_arn : (
-    var.create_codepipeline ? aws_codestarconnections_connection.github[0].arn : null
-  )
+  github_connection_arn = var.create_codepipeline ? aws_codestarconnections_connection.github[0].arn : null
 }
 
 
