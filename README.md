@@ -1202,9 +1202,26 @@ spring.activemq.password=${ACTIVEMQ_PASSWORD:}
 spring.data.mongodb.uri=${MONGODB_URI:mongodb://fleetman-mongodb:27017/fleetman}
 ```
 
-Both the ConfigMap and the Secret are produced by the **Helm chart** (the `configmap.data` and `secret.stringData` blocks in the values file), so all of a service's config lives in one place.
+The ConfigMap is rendered by the **Helm chart** from the values file (the `configmap.data` block), so a service's config lives in one place.
 
-> For quick testing, everything is currently kept in the ConfigMap. For production, the sensitive values move out to **AWS Secrets Manager / SSM** and are synced into a Kubernetes Secret by the **External Secrets Operator** — so no plaintext credentials ever live in Git.
+## My strategy
+
+**Non-sensitive variables → ConfigMap.** These hold no secrets, so the ConfigMap (in the Helm values) is **committed to the repo**. That keeps configuration version-controlled and makes it easy for developers to read and change.
+
+**Sensitive variables → not a Kubernetes Secret.** A Kubernetes Secret is only **base64-encoded, not encrypted** — base64 is trivially reversible, so it isn't real protection, and if a Secret manifest is committed to Git the credentials are effectively exposed. Kubernetes Secrets also have no built-in rotation or audit trail. So I keep credentials out of the cluster manifests entirely and store them in **AWS**, which gives two managed options: **SSM Parameter Store** and **Secrets Manager**.
+
+| | SSM Parameter Store | AWS Secrets Manager |
+|---|---|---|
+| Built for | General config + secrets | Purpose-built for secrets |
+| Cost | Free (standard tier) | Paid (per secret + API calls) |
+| Encryption | Optional (`SecureString` via KMS) | Always encrypted (KMS) |
+| Automatic rotation | Not built in | Built-in rotation support |
+| Audit / fine-grained access | Basic | Strong (IAM + rotation + audit) |
+| Best for | Simple, cost-sensitive config | Sensitive credentials |
+
+For this project's sensitive values I use **AWS Secrets Manager**, since it's purpose-built for secrets and supports encryption, rotation, and auditing out of the box.
+
+## Using AWS Secrets Manager for sensitive values
 
 ---
 
