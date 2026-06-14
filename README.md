@@ -1138,6 +1138,35 @@ If that shows `<none>`, the Service's **selector doesn't match any Ready pods**,
 
 ---
 
+# Handling environment variables
+
+Each microservice needs some configuration at runtime — which Spring profile to load, the ActiveMQ broker URL and credentials, the MongoDB connection string, and so on. We don't bake these into the Docker image; we pass them in as **environment variables** so the same image can run in any environment. Kubernetes gives us two objects for this: **ConfigMap** for non-sensitive config and **Secret** for sensitive config.
+
+## ConfigMap (non-sensitive config)
+
+A **ConfigMap** holds plain key–value configuration. We load all of its keys into the container as environment variables (`envFrom → configMapRef`), so each key becomes an env var the app can read. In this project the ConfigMap carries things like `SPRING_PROFILES_ACTIVE`, `ACTIVEMQ_BROKER_URL`, and (for the API Gateway) `POSITION_TRACKER_URL`.
+
+## Secret (sensitive config)
+
+A **Secret** works the same way but is meant for **sensitive** values and is kept base64-encoded. It's loaded into the container as env vars too (`envFrom → secretRef`). The sensitive values here are `ACTIVEMQ_USER`, `ACTIVEMQ_PASSWORD`, and `MONGODB_URI` (the Atlas connection string includes the password).
+
+## How the app picks them up
+
+Spring Boot reads environment variables directly. `SPRING_PROFILES_ACTIVE=production-microservice` selects the active profile, and the property files use `${VAR:default}` fallbacks — so an env var overrides the default when present:
+
+```properties
+spring.activemq.broker-url=${ACTIVEMQ_BROKER_URL:tcp://fleetman-queue:61616}
+spring.activemq.user=${ACTIVEMQ_USER:}
+spring.activemq.password=${ACTIVEMQ_PASSWORD:}
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://fleetman-mongodb:27017/fleetman}
+```
+
+Both the ConfigMap and the Secret are produced by the **Helm chart** (the `configmap.data` and `secret.stringData` blocks in the values file), so all of a service's config lives in one place.
+
+> For quick testing, everything is currently kept in the ConfigMap. For production, the sensitive values move out to **AWS Secrets Manager / SSM** and are synced into a Kubernetes Secret by the **External Secrets Operator** — so no plaintext credentials ever live in Git.
+
+---
+
 # Deploying with Helm
 
 So far we've talked about the Kubernetes objects (Deployment, Service, ConfigMap, …). The plain way to create them is to write a YAML manifest for each one and run `kubectl apply`. Instead, this project deploys everything with **Helm**.
