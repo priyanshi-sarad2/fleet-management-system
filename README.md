@@ -1024,3 +1024,85 @@ The really nice part is what happens on a **bad deploy**. Say `v2` points at an 
 ![A bad v2 deploy fails with ImagePullBackOff, so traffic keeps flowing to the healthy v1 ReplicaSet — zero downtime](docs/images/k8s-rollback-zero-downtime.png)
 
 > `kubectl rollout undo` is for emergencies. For normal updates the deploy is driven by **CI/CD (CodePipeline + Helm)**, so what's running in the cluster always matches the version-controlled manifests.
+
+## Namespaces
+
+A **namespace** lets you divide a single cluster into logical, isolated groups — almost like virtual clusters inside the real one. They keep resources organised, avoid name clashes (two namespaces can each have a Service called `fleetman-position-tracker`), and let you scope access and resource limits per group.
+
+Our whole application is deployed into one dedicated namespace: **`fleetman-prod`**.
+
+## How the three microservices talk to each other
+
+Inside the cluster, EKS uses the **Amazon VPC CNI** as its container networking solution. Instead of a separate overlay network, the VPC CNI gives **every pod a real private IP straight from the VPC private subnet** where its worker node runs — the same private subnets our node group lives in. So pods are first-class members of our VPC network.
+
+Because all pods share this one private network, **any pod can reach any other pod directly by its private IP — regardless of namespace**.
+
+![Amazon VPC CNI gives every pod a private IP from the VPC subnet, so pods can talk directly — but those IPs change when pods are recreated or scaled](docs/images/k8s-vpc-cni-pod-ips.png)
+
+The problem: **pod IPs aren't stable**. Pods get deleted, recreated, rescheduled, and scaled up and down — and each time a pod can come back with a **new IP**. If our code or config hard-coded a pod's IP, it would break constantly. We need something with a **stable address**. That's a Kubernetes **Service** of type **ClusterIP**.
+
+### Service (ClusterIP)
+
+A **ClusterIP Service** gives a **stable, cluster-internal virtual IP and a stable DNS name** that stay fixed for the life of the Service — even as the pods behind it come and go. The Service selects its backend pods by **label** and load-balances traffic across them.
+
+We don't use the IP for communication (an IP can still change if the Service is recreated) — we use the **DNS name**.
+
+In this project, the in-cluster call is the **API Gateway → Position Tracker**: the gateway reaches the tracker at the Service name `fleetman-position-tracker:8080`, never at a pod IP. (The Simulator and Tracker don't call each other directly — they communicate through the **ActiveMQ queue** — and the Tracker reaches **MongoDB Atlas** outside the cluster.)
+
+### CoreDNS
+
+Those stable DNS names are resolved by **CoreDNS**, the cluster's built-in DNS server. CoreDNS runs as pods in the **`kube-system`** namespace and is fronted by a Service called **`kube-dns`**. Kubernetes keeps every Service's DNS name mapped to its ClusterIP, and CoreDNS serves those records.
+
+So when the API Gateway connects to `fleetman-position-tracker`:
+
+1. it does a **DNS lookup** to CoreDNS for that name,
+2. CoreDNS responds with the Service's **ClusterIP**,
+3. the gateway connects to that stable ClusterIP,
+4. the Service **forwards** the request to one of the Position Tracker pods.
+
+![Service discovery flow — the API Gateway pod looks up the Service name in CoreDNS, gets back the stable ClusterIP, then connects to the Service which forwards to the backend pods](docs/images/k8s-service-discovery-coredns.png)
+
+How does a pod know *where* CoreDNS is? When Kubernetes creates a pod, it **pre-configures** the container's `/etc/resolv.conf` with a `nameserver` entry pointing at the `kube-dns` ClusterIP. You can see it from inside any pod:
+
+```bash
+kubectl exec -it <pod-name> -- cat /etc/resolv.conf
+# nameserver <kube-dns ClusterIP>   <- this is CoreDNS
+```
+
+### Fully Qualified Domain Name (FQDN)
+
+A Service isn't actually registered under the bare name `fleetman-position-tracker`. Its full DNS name (the **FQDN**) follows the pattern:
+
+```
+<service-name>.<namespace>.svc.cluster.local
+```
+
+So our tracker's real record is `fleetman-position-tracker.fleetman-prod.svc.cluster.local`, where `cluster.local` is our cluster's DNS domain.
+
+Short names still work because `/etc/resolv.conf` adds **search domains**, so Kubernetes expands them for you:
+
+- **Same namespace** → just `fleetman-position-tracker`
+- **Different namespace** → `fleetman-position-tracker.fleetman-prod`
+- **Anywhere** → the full FQDN above
+
+```bash
+nslookup fleetman-position-tracker                                 # same namespace
+nslookup fleetman-position-tracker.fleetman-prod                   # cross-namespace
+nslookup fleetman-position-tracker.fleetman-prod.svc.cluster.local # full FQDN
+```
+
+### A quick note on Service types and Endpoints
+
+There are three common Service types:
+
+- **ClusterIP** — internal pod-to-pod communication (what we use here).
+- **NodePort** — exposes a fixed port on every node's IP.
+- **LoadBalancer** — provisions a cloud load balancer (on AWS, a native ELB) for external access.
+
+Behind every Service is an **Endpoints / EndpointSlice** object that lists the actual pod `IP:port`s the Service routes to. It's handy for debugging:
+
+```bash
+kubectl get endpoints fleetman-position-tracker -o wide
+```
+
+If that shows `<none>`, the Service's **selector doesn't match any Ready pods**, so traffic has nowhere to go — a common reason a Service "isn't working".
