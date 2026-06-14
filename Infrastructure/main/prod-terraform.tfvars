@@ -6,6 +6,9 @@ env          = "prod"
 # Application services
 apps = ["api-gateway", "position-simulator", "position-tracker"]
 
+# Apps that need a Secrets Manager secret for their sensitive env vars
+secrets_manager_apps = ["position-tracker", "position-simulator"]
+
 # account_id is provided via the TF_VAR_account_id environment variable
 
 
@@ -18,6 +21,7 @@ create_amazon_mq                      = true
 create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
 create_codepipeline                   = true
+create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
 

@@ -27,6 +27,18 @@ variable "apps" {
   default     = []
 }
 
+variable "create_secrets_manager" {
+  description = "Whether to create the Secrets Manager secrets"
+  type        = bool
+  default     = false
+}
+
+variable "secrets_manager_apps" {
+  description = "Apps that need a Secrets Manager secret for their sensitive env vars (one empty secret created per name)"
+  type        = list(string)
+  default     = []
+}
+
 ######## VPC ########
 
 variable "create_vpc" {
