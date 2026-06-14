@@ -14,8 +14,8 @@ variable "env" {
   default = "prod"
 }
 
-variable "create_project_k8s_namespace" {
-  description = "Whether to create the project's Kubernetes namespace"
-  type        = bool
-  default     = false
+variable "k8s_namespaces" {
+  description = "Namespaces to create in the cluster. Empty list creates none."
+  type        = list(string)
+  default     = []
 }

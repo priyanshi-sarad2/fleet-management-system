@@ -4,6 +4,10 @@
 
 terraform {
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "6.49.0"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = "3.2.0"
@@ -14,6 +18,12 @@ terraform {
     }
   }
 }
+
+
+provider "aws" {
+  region = var.region
+}
+
 
 locals {
   cluster_name = "${var.project_name}-eks-cluster"

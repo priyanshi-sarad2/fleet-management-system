@@ -3,4 +3,4 @@ region       = "us-east-1"
 env          = "prod"
 
 
-create_project_k8s_namespace = true
+k8s_namespaces = ["fleetman-prod"]
