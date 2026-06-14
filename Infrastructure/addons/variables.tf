@@ -13,3 +13,9 @@ variable "env" {
   type    = string
   default = "prod"
 }
+
+variable "create_project_k8s_namespace" {
+  description = "Whether to create the project's Kubernetes namespace"
+  type        = bool
+  default     = false
+}
