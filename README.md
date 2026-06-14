@@ -1049,6 +1049,35 @@ We don't use the IP for communication (an IP can still change if the Service is 
 
 In this project, the in-cluster call is the **API Gateway → Position Tracker**: the gateway reaches the tracker at the Service name `fleetman-position-tracker:8080`, never at a pod IP. (The Simulator and Tracker don't call each other directly — they communicate through the **ActiveMQ queue** — and the Tracker reaches **MongoDB Atlas** outside the cluster.)
 
+A ClusterIP Service for the Position Tracker looks like this:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-position-tracker
+  namespace: fleetman-prod
+spec:
+  type: ClusterIP
+  selector:              # how the Service finds its pods
+    app: fleetman-position-tracker
+  ports:
+    - port: 8080         # the port the Service exposes
+      targetPort: 8080   # the port on the pod it forwards to
+```
+
+**How does the Service know which pods to send traffic to?** A cluster has many pods running, so the Service uses the same idea as a ReplicaSet — **labels and selectors**. The Service's `selector` matches a label on the pods (here `app: fleetman-position-tracker`), and it routes traffic only to the pods whose labels match.
+
+**Traffic flow.** A request from the API Gateway pod doesn't go straight to a Tracker pod — it goes to the **Service first**, and the Service forwards it on to a matching pod:
+
+![Traffic from the API Gateway pod reaches the Service first, then the Service forwards it to a Position Tracker pod](docs/images/k8s-service-traffic-flow.png)
+
+This indirection is exactly what makes pods replaceable: because everyone talks to the **stable Service**, pods behind it can come and go without anyone needing to know their IPs.
+
+**Load balancing.** If the Position Tracker is scaled to several pods, the Service automatically **spreads requests across all of them** — one stable address in front, many pods behind it:
+
+![When the Position Tracker has multiple pods, the Service load-balances requests across all of them](docs/images/k8s-service-load-balancing.png)
+
 ### CoreDNS
 
 Those stable DNS names are resolved by **CoreDNS**, the cluster's built-in DNS server. CoreDNS runs as pods in the **`kube-system`** namespace and is fronted by a Service called **`kube-dns`**. Kubernetes keeps every Service's DNS name mapped to its ClusterIP, and CoreDNS serves those records.
