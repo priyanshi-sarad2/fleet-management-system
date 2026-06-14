@@ -908,50 +908,63 @@ docker push "$ECR/fleetman-position-tracker:v1"
 
 The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
 
+---
+
 # Deploying to Kubernetes
 
 Now that we have a final Dockerfile for each service, CodePipeline builds the image and pushes it to ECR automatically. The next question is *where* and *how* to run those images — and that's the Kubernetes cluster we created on EKS.
 
-All three services (API Gateway, Position Simulator, Position Tracker) are deployed as a **Deployment**.
+All three services (API Gateway, Position Simulator, Position Tracker) are deployed as a deployment, using a **Deployment set**.
 
-## Why a Deployment?
+## Why a Deployment set?
 
-To understand the Deployment, it helps to start one level below it — the ReplicaSet.
+To understand the Deployment set, it helps to start one level below it — the ReplicaSet.
 
 ### ReplicaSet
 
 A ReplicaSet's only job is to keep a **desired number of identical pods running and healthy** — even if that number is just 1. If a pod crashes or a node dies, the ReplicaSet notices the count has dropped and brings a new pod back up. This is what gives us **self-healing** and high availability.
 
-It knows which pods belong to it using a **label selector** — the selector must match the labels on the pod template:
+A ReplicaSet handles and manages pods — but a Kubernetes cluster can have many pods running at once. So how does it know *which* pods it's responsible for? That's where **labels and selectors** come in: the ReplicaSet's selector must match the labels on the pod template, and it manages exactly the pods whose labels match.
 
 ```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: frontend
+  labels:
+    app: guestbook
+    tier: frontend
 spec:
   replicas: 3
-  selector:
+  selector:               # how the ReplicaSet finds its pods
     matchLabels:
-      tier: frontend   # must match the pod's labels
-  template:
+      tier: frontend       # must match the pod's labels
+  template:                # pod template
     metadata:
       labels:
-        tier: frontend # pod labels
+        tier: frontend     # pod labels
+    spec:
+      containers:
+        - name: php-redis
+          image: us-docker.pkg.dev/google-samples/containers/gke/gb-frontend:v5
 ```
 
 A ReplicaSet is **namespaced** — it only manages pods in its own namespace.
 
-The catch: a ReplicaSet **can't roll out updates**. If you change the image, it won't gracefully move from the old version to the new one. That's exactly the gap the Deployment fills — so we never use a ReplicaSet directly; we wrap it inside a Deployment.
+The catch: a ReplicaSet **can't roll out updates**. If you change the image, it won't gracefully move from the old version to the new one. That's exactly the gap the Deployment set fills — so we never use a ReplicaSet directly; we wrap it inside a Deployment set.
 
-### Deployment
+### Deployment set
 
-A **Deployment** sits on top of the ReplicaSet and manages it for us. It keeps the ReplicaSet alive (recreating it if deleted) and, on top of plain self-healing, it adds the two features we actually want in production:
+A **Deployment set** sits on top of the ReplicaSet and manages it for us. It keeps the ReplicaSet alive (recreating it if deleted) and, on top of plain self-healing, it adds the two features we actually want in production:
 
 - **Rolling updates** — move from one version to the next with **zero downtime**.
 - **Rollbacks** — go back to a previous version quickly if something breaks.
 
-So the chain of ownership is: **Deployment → ReplicaSet → Pods → Container**.
+So the chain of ownership is: **Deployment set → ReplicaSet → Pods → Container**.
 
-![Kubernetes object nesting — a Deployment manages a ReplicaSet, which manages the Pods that run the container](docs/images/k8s-deployment-hierarchy.png)
+![Kubernetes object nesting — a Deployment set manages a ReplicaSet, which manages the Pods that run the container](docs/images/k8s-deployment-hierarchy.png)
 
-A minimal Deployment looks almost like a ReplicaSet, just with `kind: Deployment`:
+A minimal Deployment set looks almost like a ReplicaSet, just with `kind: Deployment`:
 
 ```yaml
 apiVersion: apps/v1
@@ -975,9 +988,9 @@ spec:
 
 ## Rolling updates (zero downtime)
 
-When you change the image tag (say `v1` → `v2`) and re-apply the Deployment, here's what happens:
+When you change the image tag (say `v1` → `v2`) and re-apply the Deployment set, here's what happens:
 
-1. The Deployment creates a **brand-new ReplicaSet** for `v2` and starts bringing up its pods.
+1. The Deployment set creates a **brand-new ReplicaSet** for `v2` and starts bringing up its pods.
 2. It waits until the new `v2` pods are **up, healthy, and accepting traffic**.
 3. Only then does it scale the old `v1` ReplicaSet down to **0 replicas** — which removes the old pods.
 
@@ -987,7 +1000,7 @@ Because traffic isn't switched over until the new pods are ready, there's **no d
 
 Two important details:
 
-- The image **tag must change** between versions (`v1`, `v2`, …). If the tag is the same, the Deployment sees no change and the zero-downtime rollout/rollback machinery has nothing to work with.
+- The image **tag must change** between versions (`v1`, `v2`, …). If the tag is the same, the Deployment set sees no change and the zero-downtime rollout/rollback machinery has nothing to work with.
 - The old ReplicaSet **isn't deleted** — it's just scaled to `0`. Keeping it around is what makes instant rollbacks possible.
 
 ```bash
@@ -1006,7 +1019,7 @@ kubectl rollout undo deploy/webapp --to-revision=2 # go to a specific revision
 
 Kubernetes keeps the **last 10 revisions** by default, so you can move back and forth between versions. It's also smart enough not to create a new ReplicaSet when you're just flipping between versions it already has.
 
-The really nice part is what happens on a **bad deploy**. Say `v2` points at an image tag that doesn't exist — the new pods fail with `ErrImagePull` / `ImagePullBackOff`. Since the Deployment only shifts traffic **after** the new pods are healthy, and these never become healthy, traffic **keeps going to the old `v1` pods**. The site stays up, and you get plenty of time to fix the problem.
+The really nice part is what happens on a **bad deploy**. Say `v2` points at an image tag that doesn't exist — the new pods fail with `ErrImagePull` / `ImagePullBackOff`. Since the Deployment set only shifts traffic **after** the new pods are healthy, and these never become healthy, traffic **keeps going to the old `v1` pods**. The site stays up, and you get plenty of time to fix the problem.
 
 ![A bad v2 deploy fails with ImagePullBackOff, so traffic keeps flowing to the healthy v1 ReplicaSet — zero downtime](docs/images/k8s-rollback-zero-downtime.png)
 
