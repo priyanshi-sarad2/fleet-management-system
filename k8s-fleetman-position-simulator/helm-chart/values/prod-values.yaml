@@ -15,8 +15,8 @@ image:
 service:
   enabled: false
 
-# Testing only: everything goes through the ConfigMap (no Secret yet).
-# In production the credentials below move to AWS Secrets Manager/SSM via External Secrets.
+# Non-sensitive config only. Sensitive values (ActiveMQ credentials)
+# come from AWS Secrets Manager and are synced into a Kubernetes Secret by External Secrets.
 configmap:
   create: true
   data:
@@ -24,8 +24,6 @@ configmap:
     SPRING_PROFILES_ACTIVE: "production-microservice"
     # Amazon MQ (ActiveMQ) broker endpoint
     ACTIVEMQ_BROKER_URL: "ssl://REPLACE_WITH_AMAZON_MQ_ENDPOINT:61617"
-    ACTIVEMQ_USER: "fleetman-app"
-    ACTIVEMQ_PASSWORD: "REPLACE_ME"
 
 
 secret:
