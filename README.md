@@ -1146,6 +1146,47 @@ Each microservice needs some configuration at runtime — which Spring profile t
 
 A **ConfigMap** holds plain key–value configuration. We load all of its keys into the container as environment variables (`envFrom → configMapRef`), so each key becomes an env var the app can read. In this project the ConfigMap carries things like `SPRING_PROFILES_ACTIVE`, `ACTIVEMQ_BROKER_URL`, and (for the API Gateway) `POSITION_TRACKER_URL`.
 
+A ConfigMap for the API Gateway looks like this:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleetman-api-gateway
+  namespace: fleetman-prod
+data:
+  SPRING_PROFILES_ACTIVE: "production-microservice"
+  POSITION_TRACKER_URL: "http://fleetman-position-tracker:8080"
+```
+
+The Deployment then pulls every key from that ConfigMap into the container as env vars using `envFrom`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleetman-api-gateway
+  namespace: fleetman-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fleetman-api-gateway
+  template:
+    metadata:
+      labels:
+        app: fleetman-api-gateway
+    spec:
+      containers:
+        - name: fleetman-api-gateway
+          image: <account-id>.dkr.ecr.us-east-1.amazonaws.com/fleetman-api-gateway:v1
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: fleetman-api-gateway   # loads every key above as an env var
+```
+
 ## Secret (sensitive config)
 
 A **Secret** works the same way but is meant for **sensitive** values and is kept base64-encoded. It's loaded into the container as env vars too (`envFrom → secretRef`). The sensitive values here are `ACTIVEMQ_USER`, `ACTIVEMQ_PASSWORD`, and `MONGODB_URI` (the Atlas connection string includes the password).
