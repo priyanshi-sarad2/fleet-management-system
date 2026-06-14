@@ -1,15 +1,8 @@
 # Providers for the EKS ADD-ONS layer.
 #
-# This layer runs AFTER the infra layer (separate state). It connects to the
-# already-created EKS cluster and installs platform add-ons (External Secrets
-# Operator, etc.) using the helm/kubernetes providers.
-#
-# Here we connect via the local kubeconfig file you generate with:
-#   AWS_PROFILE=fleetman-prod aws eks update-kubeconfig \
-#     --region us-east-1 --name fleetman-eks-cluster --kubeconfig ~/.kube/fleetman-prod
-#
-# `config_context` must EXACTLY match a context name inside that kubeconfig.
-# (Omit it to fall back to the file's current-context.)
+# The cluster is created in the INFRA layer (separate state), so this layer does NOT
+# have a `module.eks`. It looks the cluster up with a data source and connects via the
+# local kubeconfig you generated with `aws eks update-kubeconfig`.
 
 terraform {
   required_providers {
@@ -32,15 +25,25 @@ provider "aws" {
   region = var.region
 }
 
-provider "kubernetes" {
-  config_path    = "~/.kube/fleetman-prod"
-  config_context = "arn:aws:eks:us-east-1:176777036446:cluster/fleetman-eks-cluster"
+locals {
+  cluster_name = "${var.project_name}-eks-cluster"
 }
 
-# helm provider v3 uses attribute syntax for the kubernetes config (`kubernetes = {}`).
+# Look up the existing cluster from the infra layer (must already exist).
+data "aws_eks_cluster" "this" {
+  name = local.cluster_name
+}
+
+provider "kubernetes" {
+  config_path = "~/.kube/fleetman-prod"
+  # `aws eks update-kubeconfig` names the context with the cluster ARN.
+  config_context = data.aws_eks_cluster.this.arn
+}
+
+# helm provider v3 uses attribute syntax for the kubernetes config.
 provider "helm" {
   kubernetes = {
     config_path    = "~/.kube/fleetman-prod"
-    config_context = "arn:aws:eks:us-east-1:176777036446:cluster/fleetman-eks-cluster"
+    config_context = data.aws_eks_cluster.this.arn
   }
 }
