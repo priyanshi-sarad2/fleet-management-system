@@ -1135,3 +1135,75 @@ kubectl get endpoints fleetman-position-tracker -o wide
 ```
 
 If that shows `<none>`, the Service's **selector doesn't match any Ready pods**, so traffic has nowhere to go — a common reason a Service "isn't working".
+
+---
+
+# Deploying with Helm
+
+So far we've talked about the Kubernetes objects (Deployment, Service, ConfigMap, …). The plain way to create them is to write a YAML manifest for each one and run `kubectl apply`. Instead, this project deploys everything with **Helm**.
+
+## What is Helm?
+
+**Helm is the package manager for Kubernetes.** A package is called a **Helm chart** — a bundle of *templated* Kubernetes manifests plus a values file that fills in the blanks. Rather than hard-coding every manifest, you write the manifests once with placeholders (`{{ .Values.image.tag }}`), and Helm renders them using the values you supply. A deployed instance of a chart is called a **release**, which Helm tracks and can upgrade or roll back as a single unit.
+
+## Plain manifests vs a Helm chart
+
+With plain manifests, every object is its own static file, and you'd repeat them for each service (and again for each environment) — lots of near-duplicate YAML with hard-coded values:
+
+```text
+k8s-manifests/
+├── api-gateway-deployment.yaml
+├── api-gateway-service.yaml
+├── api-gateway-configmap.yaml
+├── position-simulator-deployment.yaml
+├── position-simulator-configmap.yaml
+├── position-tracker-deployment.yaml
+├── position-tracker-service.yaml
+└── position-tracker-configmap.yaml
+```
+
+With Helm, each service ships a small chart that uses **one set of templates** driven by a values file. Here's the chart layout we use (each microservice has its own `helm-chart/` with the same template structure):
+
+```text
+helm-chart/
+├── Chart.yaml                 # chart metadata: name, version, appVersion
+├── values/
+│   └── prod-values.yaml       # the values (image, ports, env, replicas, probes…)
+└── templates/
+    ├── _helpers.tpl           # reusable snippets (resource names, labels)
+    ├── deployment.yaml        # the Deployment (pods, image, env, probes)
+    ├── service.yaml           # the ClusterIP Service
+    ├── configmap.yaml         # non-sensitive env config
+    ├── secret.yaml            # sensitive env (optional)
+    └── hpa.yaml               # HorizontalPodAutoscaler (optional)
+```
+
+## What each file does
+
+- **`Chart.yaml`** — metadata about the chart: its `name`, `version`, and `appVersion`. In our charts the chart `name` also drives the names of the created resources (e.g. the Service ends up named `fleetman-position-tracker`).
+- **`values/prod-values.yaml`** — the **knobs**. All the per-service, per-environment settings live here: image repository and tag, service port, replica count, the env vars (rendered into the ConfigMap), probe toggles, etc. Swapping this one file (e.g. a `dev-values.yaml`) reuses the exact same templates for a different environment.
+- **`templates/`** — the Kubernetes manifests, written with `{{ }}` placeholders that Helm fills from the values file:
+  - **`deployment.yaml`** → the Deployment (which pods to run, the image, env, probes).
+  - **`service.yaml`** → the ClusterIP Service in front of the pods.
+  - **`configmap.yaml`** → the non-sensitive environment config.
+  - **`secret.yaml`** → sensitive values (created only when enabled).
+  - **`hpa.yaml`** → autoscaling rules (created only when enabled).
+  - **`_helpers.tpl`** → shared template helpers (consistent names and labels) reused by the other templates.
+
+## Why Helm
+
+- **No duplication (DRY)** — one templated chart instead of many copy-pasted manifests; the same chart works for all three services.
+- **Parameterised per environment** — the same templates + a different values file (`prod`, `dev`, …) means no editing of the actual manifests to change an environment.
+- **One release, deployed atomically** — `helm upgrade --install` creates or updates the whole set of objects together, and Helm keeps a **revision history** so you can `helm rollback` to a previous release if something breaks.
+- **Cleaner CI/CD** — the deploy step is a single Helm command instead of applying a pile of files.
+
+A deploy is just one command (this is exactly what CodePipeline runs in `eks-deployspec.yml`):
+
+```bash
+helm upgrade --install fleetman-position-tracker ./helm-chart \
+  --namespace fleetman-prod \
+  -f helm-chart/values/prod-values.yaml \
+  --set image.tag="$IMAGE_TAG"
+```
+
+`upgrade --install` means: install the release if it doesn't exist yet, otherwise upgrade it in place.
