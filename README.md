@@ -742,6 +742,24 @@ AWS_PROFILE=<your-profile> ./max-pods-calculator.sh \
 
 For example, a `t3.micro` allows only ~4 pods — and with the system pods using some of those, almost nothing is left for the app. That's why the instance type and node count are chosen with the pod limit in mind.
 
+## Connecting kubectl to the cluster (kubeconfig)
+
+To run `kubectl`/`helm` against the cluster, you point your local kubeconfig at it:
+
+```bash
+AWS_PROFILE=fleetman-prod aws eks update-kubeconfig \
+  --region us-east-1 \
+  --name fleetman-eks-cluster
+```
+
+This updates your local kubeconfig (`~/.kube/config`) by adding/updating three things:
+
+- the **cluster** entry — the API server endpoint + the cluster CA,
+- the **user** entry — an exec plugin that calls AWS to fetch a short-lived token,
+- the **context** that ties the cluster and user together.
+
+You can then copy that generated entry into a kubeconfig of your own naming and `export KUBECONFIG=...` in your terminal to make it the active config.
+
 ---
 
 # EKS Add-ons

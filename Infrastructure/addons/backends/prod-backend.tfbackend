@@ -1,0 +1,6 @@
+# This stores the terraform state for the cluster ADD-ONS layer (ALB controller, External Secrets Operator, etc.)
+
+bucket  = "fleetman-terraform"
+key     = "prod/eks-addons.tfstate"
+region  = "us-east-1"
+encrypt = true
