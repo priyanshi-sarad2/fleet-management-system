@@ -9,14 +9,13 @@ module "secrets-manager" {
   name        = var.secret_name
   description = var.description
 
-  # Empty secret: no `secret_string` is passed, so the module creates the
-  # secret shell only (no version). The real value is set out-of-band via
-  # `aws secretsmanager put-secret-value` / the Console.
-  # `ignore_secret_changes` makes sure a future apply never overwrites that
-  # manually-set value.
+  # "Empty by design": AWS requires a value for the first secret version, so we write a throwaway placeholder.
+  # `ignore_secret_changes = true` then makes Terraform ignore the value forever, so the REAL value — set
+  # out-of-band via `aws secretsmanager put-secret-value` / the Console — is never overwritten by a future apply
+  # (and never lands in Git or, beyond this placeholder, in state).
   ignore_secret_changes = true
+  secret_string         = jsonencode({ placeholder = "set-via-cli" })
 
-  # Allows deleting/recreating the same secret name immediately instead of
-  # waiting out the 7–30 day recovery window (handy while iterating).
+  # Allows deleting/recreating the same secret name immediately instead of waiting out the 7–30 day recovery window (handy while iterating).
   recovery_window_in_days = var.recovery_window_in_days
 }
