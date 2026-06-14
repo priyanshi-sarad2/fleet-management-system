@@ -413,7 +413,7 @@ We split the VPC range into public and private subnets, each a `/24` block (256 
 
 **Public subnets (2)** — `10.2.1.0/24` and `10.2.2.0/24`. A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. Resources here can be given a **public IP** (in addition to their private IP), which is the address the outside world uses to reach them. We use these subnets for the **load balancer** and the **NAT gateway**. Because the load balancer sits in a public subnet, it is internet-facing and gets a **public DNS name** (and public IP) — this is the entry point users actually hit from the internet, and it then forwards the traffic inward to the pods running in the private subnets. (Two public subnets are used, in two different AZs, because an internet-facing load balancer needs a subnet in each AZ it serves.)
 
-**Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. Resources here only get a **private IP** (an address that is only reachable from inside the VPC) and no public IP, so nothing on the internet can address them directly. This is where the **EKS worker nodes and the application pods run**. Keeping them private is more secure — incoming traffic has to go through the load balancer in the public subnet first, and outbound traffic goes out via the NAT gateway.
+**Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. Resources here only get a **private IP** (an address that is only reachable from inside the VPC) and no public IP, so nothing on the internet can address them directly. This is where the **EKS worker nodes and the application pods run**, and the **Amazon MQ (ActiveMQ) broker is also deployed here** in a private subnet. Keeping them private is more secure — incoming traffic has to go through the load balancer in the public subnet first, and outbound traffic goes out via the NAT gateway.
 
 ### Internet Gateway
 
@@ -907,3 +907,107 @@ docker push "$ECR/fleetman-position-tracker:v1"
 ```
 
 The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
+
+# Deploying to Kubernetes
+
+Now that we have a final Dockerfile for each service, CodePipeline builds the image and pushes it to ECR automatically. The next question is *where* and *how* to run those images — and that's the Kubernetes cluster we created on EKS.
+
+All three services (API Gateway, Position Simulator, Position Tracker) are deployed as a **Deployment**.
+
+## Why a Deployment?
+
+To understand the Deployment, it helps to start one level below it — the ReplicaSet.
+
+### ReplicaSet
+
+A ReplicaSet's only job is to keep a **desired number of identical pods running and healthy** — even if that number is just 1. If a pod crashes or a node dies, the ReplicaSet notices the count has dropped and brings a new pod back up. This is what gives us **self-healing** and high availability.
+
+It knows which pods belong to it using a **label selector** — the selector must match the labels on the pod template:
+
+```yaml
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend   # must match the pod's labels
+  template:
+    metadata:
+      labels:
+        tier: frontend # pod labels
+```
+
+A ReplicaSet is **namespaced** — it only manages pods in its own namespace.
+
+The catch: a ReplicaSet **can't roll out updates**. If you change the image, it won't gracefully move from the old version to the new one. That's exactly the gap the Deployment fills — so we never use a ReplicaSet directly; we wrap it inside a Deployment.
+
+### Deployment
+
+A **Deployment** sits on top of the ReplicaSet and manages it for us. It keeps the ReplicaSet alive (recreating it if deleted) and, on top of plain self-healing, it adds the two features we actually want in production:
+
+- **Rolling updates** — move from one version to the next with **zero downtime**.
+- **Rollbacks** — go back to a previous version quickly if something breaks.
+
+So the chain of ownership is: **Deployment → ReplicaSet → Pods → Container**.
+
+![Kubernetes object nesting — a Deployment manages a ReplicaSet, which manages the Pods that run the container](docs/images/k8s-deployment-hierarchy.png)
+
+A minimal Deployment looks almost like a ReplicaSet, just with `kind: Deployment`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: myapp:v1
+```
+
+## Rolling updates (zero downtime)
+
+When you change the image tag (say `v1` → `v2`) and re-apply the Deployment, here's what happens:
+
+1. The Deployment creates a **brand-new ReplicaSet** for `v2` and starts bringing up its pods.
+2. It waits until the new `v2` pods are **up, healthy, and accepting traffic**.
+3. Only then does it scale the old `v1` ReplicaSet down to **0 replicas** — which removes the old pods.
+
+Because traffic isn't switched over until the new pods are ready, there's **no downtime** during the update.
+
+![Rolling update from v1 to v2 — a new ReplicaSet for v2 serves traffic while the old v1 ReplicaSet is scaled to 0 but kept for rollback](docs/images/k8s-rolling-update.png)
+
+Two important details:
+
+- The image **tag must change** between versions (`v1`, `v2`, …). If the tag is the same, the Deployment sees no change and the zero-downtime rollout/rollback machinery has nothing to work with.
+- The old ReplicaSet **isn't deleted** — it's just scaled to `0`. Keeping it around is what makes instant rollbacks possible.
+
+```bash
+kubectl rollout status  deploy/webapp   # watch the rollout finish
+kubectl rollout history deploy/webapp   # see past revisions
+```
+
+## Rollbacks (and why the site stays up even on a bad deploy)
+
+Because the old ReplicaSet is still there at `0` replicas, rolling back is just scaling it back up:
+
+```bash
+kubectl rollout undo deploy/webapp                 # go back one revision
+kubectl rollout undo deploy/webapp --to-revision=2 # go to a specific revision
+```
+
+Kubernetes keeps the **last 10 revisions** by default, so you can move back and forth between versions. It's also smart enough not to create a new ReplicaSet when you're just flipping between versions it already has.
+
+The really nice part is what happens on a **bad deploy**. Say `v2` points at an image tag that doesn't exist — the new pods fail with `ErrImagePull` / `ImagePullBackOff`. Since the Deployment only shifts traffic **after** the new pods are healthy, and these never become healthy, traffic **keeps going to the old `v1` pods**. The site stays up, and you get plenty of time to fix the problem.
+
+![A bad v2 deploy fails with ImagePullBackOff, so traffic keeps flowing to the healthy v1 ReplicaSet — zero downtime](docs/images/k8s-rollback-zero-downtime.png)
+
+> `kubectl rollout undo` is for emergencies. For normal updates the deploy is driven by **CI/CD (CodePipeline + Helm)**, so what's running in the cluster always matches the version-controlled manifests.

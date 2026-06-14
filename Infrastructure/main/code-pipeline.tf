@@ -23,7 +23,7 @@ module "iam-assumable-role-codepipeline" {
   create_iam_role           = var.create_codepipeline
   iam_role_name             = "${var.project_name}-${var.env}-codepipeline"
   iam_role_policy_arns      = var.create_codepipeline ? concat(var.iam_role_policy_arns, [module.iam-custom-policy-codepipeline.arn]) : []
-  iam_trusted_role_services = ["codepipeline.amazonaws.com"]
+  iam_trusted_role_services = ["codepipeline.amazonaws.com", "codebuild.amazonaws.com"]
   depends_on                = [module.iam-custom-policy-codepipeline]
 }
 

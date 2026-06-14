@@ -1,0 +1,129 @@
+project: fleetman
+env: prod
+namespace: fleetman-prod
+replicaCount: 1
+
+autoscaling:
+  enabled: false
+
+image:
+  repository: "331860160408.dkr.ecr.us-east-1.amazonaws.com/fleetman-position-tracker"
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# Testing only: everything goes through the ConfigMap (no Secret yet).
+# In production the credentials below move to AWS Secrets Manager/SSM via External Secrets.
+configmap:
+  create: true
+  data:
+    # Activates application-production-microservice.properties
+    SPRING_PROFILES_ACTIVE: "production-microservice"
+    # Amazon MQ (ActiveMQ) broker endpoint
+    ACTIVEMQ_BROKER_URL: "ssl://REPLACE_WITH_AMAZON_MQ_ENDPOINT:61617"
+    ACTIVEMQ_USER: "fleetman-app"
+    ACTIVEMQ_PASSWORD: "REPLACE_ME"
+    MONGODB_URI: "mongodb+srv://fleetman:Wh6kJAP.7a6BBds@fleetman.skxgemj.mongodb.net/?appName=fleetman"
+
+
+secret:
+  create: false
+  type: Opaque
+  stringData: {}
+  # If you already have base64 values, you can use `data` instead
+  data: {}
+
+
+probes:
+  liveness:
+    enabled: false
+    path: /healthcheck
+  readiness:
+    enabled: false
+    path: /healthcheck
+
+serviceAccount:
+  # Use the pre-created IRSA ServiceAccount in the cluster (no ServiceAccount template in this chart).
+  create: false
+
+
+
+
+# Optional: override app/chart name in resources (defaults to Chart.yaml name)
+# nameOverride: riddhi-gsp-api
+# fullnameOverride: riddhi-gsp-api
+
+
+# Optional: for ECR this is usually NOT needed, so keep it empty
+# imagePullSecrets:
+#   - name: some-registry-secret
+
+
+existingSecret:
+  name: ""
+# /*
+#  existingSecret:
+#  Use this when the Secret already exists in the cluster (created outside Helm).
+#  If you set `existingSecret.name`, the Deployment will load ALL keys from that Secret as environment variables (envFrom -> secretRef).
+#  Keep it empty if you don't have a pre-created Secret, or if you are using `secret.create: true` instead.
+# */
+
+
+# Optional: extra env vars as a simple key/value map (rendered into env:)
+envVars: {}
+
+# Optional: advanced env entries (valueFrom, etc.)
+extraEnv: []
+
+
+podAnnotations: {}
+# /*
+#  podAnnotations:
+#  Extra metadata you want to add to the Pods (annotations).
+#  Common uses: Prometheus scraping, service-mesh/sidecar flags, custom tooling tags, etc.
+#
+#  Example:
+#    podAnnotations:
+#      prometheus.io/scrape: "true"
+#      prometheus.io/port: "8000"
+# */
+
+
+resources: {}
+#
+#  Container CPU/memory requests & limits
+#  - requests: used for scheduling (guaranteed minimum)
+#  - limits: hard cap enforced by Kubernetes
+#
+#  Example:
+#    resources:
+#      requests:
+#        cpu: "200m"
+#        memory: "256Mi"
+#      limits:
+#        cpu: "500m"
+#        memory: "512Mi"
+#
+
+
+podSecurityContext: {}
+containerSecurityContext: {}
+# /*
+#  Security context (basic container hardening)
+#
+#  - podSecurityContext: applies at Pod level (example: fsGroup for permissions on mounted volumes)
+#  - containerSecurityContext: applies to the container process (example: runAsNonRoot, readOnlyRootFilesystem)
+#
+#  Example:
+#    podSecurityContext:
+#      fsGroup: 2000
+#    containerSecurityContext:
+#      runAsNonRoot: true
+#      runAsUser: 1000
+#      allowPrivilegeEscalation: false
+#      readOnlyRootFilesystem: true
+# */

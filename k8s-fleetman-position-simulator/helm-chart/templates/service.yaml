@@ -1,0 +1,18 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ required "values.yaml: namespace is required" .Values.namespace | quote }}
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  type: {{ default "ClusterIP" .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ default 80 .Values.service.port }}
+      targetPort: {{ default "http" .Values.service.targetPort }}
+      protocol: TCP
+  selector:
+    {{- include "app.selectorLabels" . | nindent 4 }}
+{{- end }}

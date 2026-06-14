@@ -12,12 +12,12 @@ apps = ["api-gateway", "position-simulator", "position-tracker"]
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = false
-create_ecr_repository                 = false
-create_amazon_mq                      = false
-create_eks_cluster                    = false
+create_vpc                            = true
+create_ecr_repository                 = true
+create_amazon_mq                      = true
+create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
-create_codepipeline                   = false
+create_codepipeline                   = true
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
 
@@ -153,9 +153,9 @@ custom_oidc_thumbprints = []
 
 ##########    EKS Managed Node Group    ##########
 node_group_instance_types = ["t3a.medium"]
-node_group_min_size       = 2
-node_group_max_size       = 2
-node_group_desired_size   = 2
+node_group_min_size       = 4
+node_group_max_size       = 4
+node_group_desired_size   = 4
 node_group_ebs_disk_size  = 20
 
 # Attaching extra policies to the node IAM role so Fluent Bit / CloudWatch Agent on the EKS worker nodes

@@ -1,0 +1,17 @@
+{{- if .Values.configmap.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ required "values.yaml: namespace is required" .Values.namespace | quote }}
+  name: {{ include "app.configmapName" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+{{- if .Values.configmap.data }}
+data:
+  {{- range $k, $v := .Values.configmap.data }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+{{- else }}
+data: {}
+{{- end }}
+{{- end }}
