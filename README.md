@@ -747,9 +747,7 @@ For example, a `t3.micro` allows only ~4 pods — and with the system pods using
 To run `kubectl`/`helm` against the cluster, you point your local kubeconfig at it:
 
 ```bash
-AWS_PROFILE=fleetman-prod aws eks update-kubeconfig \
-  --region us-east-1 \
-  --name fleetman-eks-cluster
+AWS_PROFILE=fleetman-prod aws eks update-kubeconfig --region us-east-1 --name fleetman-eks-cluster
 ```
 
 This updates your local kubeconfig (`~/.kube/config`) by adding/updating three things:
