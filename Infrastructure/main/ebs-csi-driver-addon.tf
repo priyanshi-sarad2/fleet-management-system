@@ -43,7 +43,7 @@ This avoids the dependency loop and keeps the full setup managed in Terraform.
 ##########    IRSA IAM Role for Amazon EBS CSI Driver    ##########
 
 module "irsa-ebs-csi-driver-iam-role" {
-  source = "../modules/iam/iam-role-for-service-account"
+  source = "../modules/iam-module/iam-role-for-service-account"
 
   create      = var.create_eks_ebs_csi_driver_addon
   region      = var.region

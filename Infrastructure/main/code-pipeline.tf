@@ -1,6 +1,6 @@
 ########       IAM ROLE        ########
 module "iam-custom-policy-codepipeline" {
-  source                   = "../modules/iam-policy"
+  source                   = "../modules/iam-module/iam-policy"
   create_iam_policy        = var.create_codepipeline
   name                     = var.project_name
   app                      = "iam-custom-policy"
@@ -19,7 +19,7 @@ module "iam-custom-policy-codepipeline" {
 }
 
 module "iam-assumable-role-codepipeline" {
-  source                    = "../modules/iam-role"
+  source                    = "../modules/iam-module/iam-role"
   create_iam_role           = var.create_codepipeline
   iam_role_name             = "${var.project_name}-${var.env}-codepipeline"
   iam_role_policy_arns      = var.create_codepipeline ? concat(var.iam_role_policy_arns, [module.iam-custom-policy-codepipeline.arn]) : []

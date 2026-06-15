@@ -1,7 +1,7 @@
 ######## Monitoring ########
 
 module "irsa-eks-prometheus-writer-iam-role" {
-  source = "../modules/iam/iam-role-for-service-account"
+  source = "../modules/iam-module/iam-role-for-service-account"
 
   create      = var.setup_eks_cluster_monitoring
   region      = var.region

@@ -3,7 +3,7 @@
 # If the list is empty, for_each iterates over nothing -> no namespaces are created.
 
 module "k8s_namespace" {
-  source   = "../modules/k8s-namespace"
+  source   = "../modules/k8s-modules/k8s-namespace"
   for_each = toset(var.k8s_namespaces)
 
   namespace    = each.value
