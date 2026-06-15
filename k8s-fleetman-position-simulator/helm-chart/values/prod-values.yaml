@@ -32,6 +32,16 @@ secret:
   data: {}
 
 
+# External Secrets Operator: sync sensitive env vars from AWS Secrets Manager
+# into a K8s Secret (named like the app), which the Deployment loads via envFrom.
+externalSecret:
+  enabled: true
+  secretStoreName: aws-secretsmanager
+  secretStoreKind: ClusterSecretStore
+  remoteKey: fleetman-prod/position-simulator   # the Secrets Manager secret
+  refreshInterval: 1h
+
+
 probes:
   liveness:
     enabled: false
@@ -58,7 +68,7 @@ serviceAccount:
 
 
 existingSecret:
-  name: ""
+  name: "fleetman-position-simulator"   # the Secret created by the ExternalSecret above
 # /*
 #  existingSecret:
 #  Use this when the Secret already exists in the cluster (created outside Helm).
