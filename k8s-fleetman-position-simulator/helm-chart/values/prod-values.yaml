@@ -58,8 +58,8 @@ serviceAccount:
 
 
 # Optional: override app/chart name in resources (defaults to Chart.yaml name)
-# nameOverride: riddhi-gsp-api
-# fullnameOverride: riddhi-gsp-api
+# nameOverride: 
+# fullnameOverride: 
 
 
 # Optional: for ECR this is usually NOT needed, so keep it empty
@@ -68,7 +68,8 @@ serviceAccount:
 
 
 existingSecret:
-  name: "fleetman-position-simulator"   # the Secret created by the ExternalSecret above
+  name: "fleetman-position-simulator"   
+# the Secret created by the ExternalSecret above
 # /*
 #  existingSecret:
 #  Use this when the Secret already exists in the cluster (created outside Helm).
