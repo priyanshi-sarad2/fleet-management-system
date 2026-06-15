@@ -124,6 +124,20 @@ module "iam_policy" {
         }
       ] : [],
 
+      # CodeBuild permissions (ALWAYS attached): CodePipeline must be able to start and
+      # monitor the CodeBuild projects it triggers in its build/deploy stages.
+      [
+        {
+          Action = [
+            "codebuild:StartBuild",
+            "codebuild:BatchGetBuilds",
+            "codebuild:StopBuild"
+          ]
+          Effect   = "Allow"
+          Resource = "arn:aws:codebuild:${var.region}:${var.account_id}:project/${var.name}-*"
+        }
+      ],
+
     ])
   })
 
