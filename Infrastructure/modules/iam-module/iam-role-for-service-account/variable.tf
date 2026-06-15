@@ -38,6 +38,18 @@ variable "ebs_csi_kms_cmk_arns" {
   default     = []
 }
 
+variable "attach_external_secrets_policy" {
+  description = "Attach the ready-made External Secrets Operator IAM policy to the role"
+  type        = bool
+  default     = false
+}
+
+variable "external_secrets_secrets_manager_arns" {
+  description = "Secrets Manager ARNs the External Secrets Operator role is allowed to read from"
+  type        = list(string)
+  default     = []
+}
+
 variable "attach_amazon_managed_service_prometheus_policy" {
   description = "Attach the Amazon Managed Service for Prometheus IAM policy to the role"
   type        = bool

@@ -40,6 +40,16 @@ module "iam_role_for_service_accounts" {
     If you are not using a customer-managed KMS key, you can leave this empty.
   */ 
 
+  # this is for ready-made ESO policy
+  attach_external_secrets_policy  = var.attach_external_secrets_policy
+
+  external_secrets_secrets_manager_arns = var.external_secrets_secrets_manager_arns
+  /*
+    List of Secrets Manager ARNs the role can read from.
+    This is for the ready-made ESO policy.
+  */
+
+
   attach_amazon_managed_service_prometheus_policy = var.attach_amazon_managed_service_prometheus_policy
   amazon_managed_service_prometheus_workspace_arns = var.amazon_managed_service_prometheus_workspace_arns
   /*

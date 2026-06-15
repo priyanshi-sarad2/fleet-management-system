@@ -19,3 +19,15 @@ variable "k8s_namespaces" {
   type        = list(string)
   default     = []
 }
+
+variable "create_external_secrets_operator" {
+  description = "Whether to create the External Secrets Operator resources (IRSA role, service account, etc.)"
+  type        = bool
+  default     = false
+}
+
+# Supplied via the TF_VAR_account_id environment variable (kept out of version control).
+variable "account_id" {
+  description = "AWS account ID. Provide via the TF_VAR_account_id environment variable."
+  type        = string
+}
