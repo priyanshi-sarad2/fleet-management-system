@@ -107,7 +107,22 @@ module "iam_policy" {
         }
       ] : [],
 
-
+      # Conditionally add CodeConnections permission so CodePipeline's Source stage
+      # can use the GitHub connection. (Service was renamed CodeStar Connections -> CodeConnections,
+      # so both action namespaces are included.)
+      var.attach_codestar_connection_policy ? [
+        {
+          Action = [
+            "codestar-connections:UseConnection",
+            "codeconnections:UseConnection"
+          ]
+          Effect = "Allow"
+          Resource = [
+            "arn:aws:codestar-connections:${var.region}:${var.account_id}:connection/*",
+            "arn:aws:codeconnections:${var.region}:${var.account_id}:connection/*"
+          ]
+        }
+      ] : [],
 
     ])
   })

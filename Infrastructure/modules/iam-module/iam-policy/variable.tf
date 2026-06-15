@@ -68,6 +68,12 @@ variable "attach_eks_policy" {
   default = false
 }
 
+variable "attach_codestar_connection_policy" {
+  description = "Attach codestar-connections/codeconnections UseConnection permission (for CodePipeline GitHub source)"
+  type    = bool
+  default = false
+}
+
 variable "eks_cluster_name" {
   type    = string
   default = null

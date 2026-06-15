@@ -14,6 +14,7 @@ module "iam-custom-policy-codepipeline" {
   attach_iam_role          = true
   attach_ecr_policy        = true
   attach_eks_policy        = true
+  attach_codestar_connection_policy = true
   eks_cluster_name         = "${var.project_name}-eks-cluster"
   account_id               = var.account_id
 }
