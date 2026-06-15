@@ -14,6 +14,6 @@ resource "kubernetes_namespace_v1" "this" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }

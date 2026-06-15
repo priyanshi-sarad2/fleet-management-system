@@ -22,8 +22,6 @@ configmap:
   data:
     # Activates application-production-microservice.properties
     SPRING_PROFILES_ACTIVE: "production-microservice"
-    # Amazon MQ (ActiveMQ) broker endpoint
-    ACTIVEMQ_BROKER_URL: "ssl://REPLACE_WITH_AMAZON_MQ_ENDPOINT:61617"
 
 
 secret:
