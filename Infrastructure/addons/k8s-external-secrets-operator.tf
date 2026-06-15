@@ -6,7 +6,7 @@
 
 module "external_secrets_service_account" {
   source = "../modules/k8s-modules/k8s-namespace/service-account"
-  count = var.create_external_secrets_operator ? 1 : 0
+  count  = var.create_external_secrets_operator ? 1 : 0
 
   service_account_name = "external-secrets-operator"
   namespace            = var.k8s_namespaces[1]
@@ -31,9 +31,9 @@ module "external_secrets_irsa" {
   source = "../modules/iam-module/iam-role-for-service-account"
   create = var.create_external_secrets_operator
 
-  region = var.region
+  region      = var.region
   description = "IAM role for External Secrets Operator"
-  name = "${var.project_name}-${var.env}-external-secrets-operator-role"
+  name        = "${var.project_name}-${var.env}-external-secrets-operator-role"
 
   oidc_providers = {
     eks = {
@@ -47,6 +47,4 @@ module "external_secrets_irsa" {
     "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${var.project_name}-${var.env}/*"
   ]
   # This will add both the secrets in the list to the role
-
 }
-

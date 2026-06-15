@@ -31,3 +31,18 @@ variable "account_id" {
   description = "AWS account ID. Provide via the TF_VAR_account_id environment variable."
   type        = string
 }
+
+variable "helm_charts" {
+  description = "Helm releases to install, keyed by release name. Empty map installs nothing."
+  type = map(object({
+    repository    = string
+    chart_name    = string
+    chart_version = optional(string)
+    namespace     = string
+    set = optional(list(object({
+      name  = string
+      value = string
+    })), [])
+  }))
+  default = {}
+}
