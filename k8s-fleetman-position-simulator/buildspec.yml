@@ -2,12 +2,12 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region ${REGION} | docker login -u AWS --password-stdin ${ECR_LOGIN}
 
   build:
     commands:
       - echo Building the Docker image...
+      - cd k8s-fleetman-position-simulator
       - TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
       - docker build -t ${ECR_REPOSITORY_URI}:${TAG} .
 
