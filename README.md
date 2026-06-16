@@ -1312,3 +1312,85 @@ helm upgrade --install fleetman-position-tracker ./helm-chart \
 `upgrade --install` means: install the release if it doesn't exist yet, otherwise upgrade it in place.
 
 # Deploying the webapp (CloudFront + S3)
+
+## What the webapp is
+
+The webapp is the **Angular frontend** — the actual screen you look at in the browser. It shows a **map with the vehicles moving on it in real time**, plus a list of vehicles and their speed. It doesn't store anything itself; it simply connects to the **API Gateway**, receives live position updates, and draws them on the map.
+
+It is **both a Single Page Application (SPA) and a static site** — these aren't opposites, they describe two different things:
+
+- **SPA** = *how the app works.*
+- **Static** = *how it's hosted after you build it.*
+
+## It's a Single Page Application (SPA)
+
+A SPA loads **one** HTML page a single time, and from then on **JavaScript updates the screen in the browser** — it never reloads a whole new page from the server. You can see this in `src/index.html`: the entire body is just `<app-root></app-root>`, and Angular's JavaScript renders everything inside it (the header, the map, the vehicle list).
+
+Compare that with a traditional "multi-page" website, where every click asks the server for a brand-new full HTML page:
+
+![Single Page Application vs Traditional Multi-Page App](assets/spa-diagram.png)
+
+- **Traditional multi-page app:** each action → the server builds and returns a whole new HTML page → the browser reloads.
+- **SPA:** the page (HTML + JavaScript) is downloaded **once**, then the JavaScript only fetches **data** (JSON) from the API and updates the screen in place — no full reloads, so it feels fast and app-like.
+
+## ...and it builds into static files (what "static" means)
+
+When you run `npm run build`, Angular compiles the whole app into a small set of plain files: `index.html`, some `.js`, and some `.css`. That bundle **is** the website.
+
+"**Static**" means those files are served **exactly as they are** — the server doesn't run any code, talk to a database, or build anything per request. Every visitor gets the same files, and all the actual work (drawing the map, updating markers) happens **in the browser**.
+
+This is the opposite of the backend Java microservices, which **run code on the server** for every request (read the queue, query MongoDB, calculate speed). The webapp has none of that on the server side — it's just files.
+
+## Why deploying it on EKS is not necessary
+
+Because it's a **static SPA**, there is nothing to "run" on the server side — no JVM, no Node process, no long-running pod. Putting it on EKS would mean keeping a web-server pod alive just to hand out a few unchanging files, which is wasteful. All it actually needs is:
+
+1. **Somewhere to store the files**, and
+2. **Something to serve them quickly over HTTPS.**
+
+So unlike the three backend services (which genuinely need Kubernetes to run their processes), the webapp does **not** need EKS.
+
+### How you could serve it without AWS
+
+Since it's just files after building, **any web server can serve it**:
+
+```bash
+cd k8s-fleetman-webapp-angular
+npm ci
+npm run build      # produces the dist/ folder of static files
+```
+
+Then either:
+
+- Copy the contents of `dist/` into a web server like **Nginx** (e.g. `/usr/share/nginx/html/`) and it serves them, **or**
+- Use the **Nginx Docker image** the project already ships (`Dockerfile`), which builds the app and serves `dist/` with Nginx. This is exactly how the webapp ran on the earlier **Docker Desktop Kubernetes** setup — a small Nginx pod behind a Service.
+
+```bash
+docker build -t fleetman-webapp .
+docker run -p 8080:80 fleetman-webapp   # open http://localhost:8080
+```
+
+> **Either way**, the webapp needs to reach the **API Gateway** to get live vehicle data. On a non-AWS setup that's whatever exposes the gateway (a Kubernetes Service / NodePort, or a local URL). The map only shows movement when it can reach that backend.
+
+## Deploying it on AWS with CloudFront + S3
+
+For this project we host the static SPA on **Amazon S3 + CloudFront** instead of EKS:
+
+- **Amazon S3** — a **private** bucket that simply **stores** the built files (`index.html`, JS, CSS).
+- **Amazon CloudFront** — a **CDN** that sits in front of the bucket and **serves** the files to users. It caches them at edge locations close to the user (fast everywhere), provides **HTTPS** with an ACM certificate, and adds security headers. CloudFront is the only thing allowed to read the bucket, so the bucket itself stays private.
+
+Deploying (or updating) the site is just **build → upload → refresh the cache**:
+
+```bash
+# 1. Build the static files
+npm ci
+npm run build
+
+# 2. Upload them to the S3 bucket
+aws s3 sync dist/ s3://<webapp-bucket-name>/ --delete
+
+# 3. Tell CloudFront to drop its cached copy so users get the new version
+aws cloudfront create-invalidation --distribution-id <distribution-id> --paths "/*"
+```
+
+`--delete` removes old files that are no longer in the new build, and the invalidation forces CloudFront's edge caches to fetch the fresh files instead of serving the stale cached ones. In this project the S3 bucket and CloudFront distribution are created with Terraform (under `Infrastructure/`), so the one-time setup is codified rather than clicked together by hand.
