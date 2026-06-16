@@ -16,6 +16,12 @@ terraform {
       source  = "hashicorp/helm"
       version = "3.2.0"
     }
+    # kubectl applies raw YAML server-side and does NOT require a CRD at plan time,
+    # so it can create Custom Resources whose CRD is installed in the same apply.
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "2.4.1"
+    }
   }
 }
 
@@ -45,4 +51,10 @@ provider "helm" {
     config_path    = "~/.kube/fleetman-prod"
     config_context = data.aws_eks_cluster.eks_cluster_data.arn
   }
+}
+
+provider "kubectl" {
+  config_path      = "~/.kube/fleetman-prod"
+  config_context   = data.aws_eks_cluster.eks_cluster_data.arn
+  load_config_file = true
 }

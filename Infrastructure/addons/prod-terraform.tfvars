@@ -6,10 +6,13 @@ account_id = "176777036446"
 
 create_external_secrets_operator = true
 
+# k8s_namespaces = []
+
 k8s_namespaces = ["fleetman-prod", "external-secrets-operator"]
 
-
 # Helm charts to install (keyed by release name). Empty map installs nothing.
+# helm_charts = {}
+
 helm_charts = {
   "external-secrets" = {
     repository    = "https://charts.external-secrets.io"

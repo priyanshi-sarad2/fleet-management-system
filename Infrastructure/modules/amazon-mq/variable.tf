@@ -26,6 +26,12 @@ variable "allowed_ingress_ports" {
   default     = []
 }
 
+variable "allowed_cidr_blocks" {
+  type        = list(string)
+  description = "CIDR blocks allowed to reach the broker on allowed_ingress_ports (e.g. the VPC CIDR). Without a source, no ingress rules are created."
+  default     = []
+}
+
 variable "vpc_id" {
   type        = string
   description = "ID of the VPC the broker is deployed into"

@@ -49,21 +49,21 @@ module "external_secrets_irsa" {
   # This will add both the secrets in the list to the role
 }
 
-
 ### ClusterSecretStore (custom resource) ###
 # Created after ESO is installed via Helm (the CRD must exist first).
 # Cluster-scoped, so it has NO namespace. It tells ESO where to read secrets from
 # (AWS Secrets Manager) and how to authenticate (IRSA via the ESO service account).
 
 module "eso_cluster_secret_store" {
-  source = "../modules/k8s-modules/k8s-manifests"
+  source = "../modules/k8s-modules/kubectl-manifest"
   count  = var.create_external_secrets_operator ? 1 : 0
 
-  k8s_manifests_name        = "aws-secretsmanager"
-  k8s_manifests_api_version = "external-secrets.io/v1"
-  k8s_manifests_kind        = "ClusterSecretStore"
+  api_version = "external-secrets.io/v1"
+  kind        = "ClusterSecretStore"
+  name        = "aws-secretsmanager"
+  # cluster-scoped -> no namespace
 
-  k8s_manifests_spec = {
+  spec = {
     provider = {
       aws = {
         service = "SecretsManager"
@@ -80,6 +80,7 @@ module "eso_cluster_secret_store" {
     }
   }
 
-  # The ESO Helm release installs the ClusterSecretStore CRD; it must exist first.
+  # ESO Helm release installs the CRD first. With kubectl_manifest this depends_on
+  # actually works in a single apply (no CRD needed at plan time).
   depends_on = [module.helm_charts]
 }

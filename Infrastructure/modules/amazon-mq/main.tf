@@ -12,6 +12,9 @@ module "mq-broker" {
   subnet_ids    = var.subnet_ids
 
   allowed_ingress_ports = var.allowed_ingress_ports
+  # A source is required for the module to actually create ingress rules
+  # (ports alone create nothing). Allow the VPC so in-cluster pods can reach the broker.
+  allowed_cidr_blocks = var.allowed_cidr_blocks
 
   engine_type = var.engine_type
   engine_version = var.engine_version
