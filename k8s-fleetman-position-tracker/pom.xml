@@ -14,18 +14,14 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>1.4.0.RELEASE</version>
+		<version>3.5.11</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<java.version>1.8</java.version>
-		<!-- Override Spring Boot 1.4's ancient mongo-java-driver (3.2.2) with the last 3.x
-		     release. 3.12.x runs on Java 8, keeps the 3.x API (so no code changes), and adds
-		     SNI + modern TLS so it can connect to current MongoDB Atlas. -->
-		<mongodb.version>3.12.14</mongodb.version>
+		<java.version>21</java.version>
 	</properties>
 
 	<dependencies>
@@ -54,6 +50,13 @@
 		<dependency>
 		   <groupId>org.springframework.boot</groupId>
 		   <artifactId>spring-boot-starter-data-mongodb</artifactId>
+		</dependency>
+
+		<!-- Run the existing JUnit 4 tests on the JUnit 5 platform without rewriting them. -->
+		<dependency>
+			<groupId>org.junit.vintage</groupId>
+			<artifactId>junit-vintage-engine</artifactId>
+			<scope>test</scope>
 		</dependency>
 			
 	</dependencies>

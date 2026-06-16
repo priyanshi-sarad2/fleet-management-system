@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jms.UncategorizedJmsException;
 import org.springframework.jms.core.JmsTemplate;
 
@@ -23,7 +24,7 @@ public class Journey implements Callable<Object>
 	private String queueName;
     private static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 	
-	private static Logger log  = Logger.getLogger(Journey.class);
+	private static Logger log  = LoggerFactory.getLogger(Journey.class);
 
 	public Journey(String vehicleName, List<String> positions, JmsTemplate jmsTemplate, String queueName) 
 	{

@@ -1,5 +1,5 @@
 # ---------- Stage 1: build ----------
-FROM maven:3.6.3-jdk-8-slim AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy only the pom first and pre-download dependencies (cached layer).
@@ -11,7 +11,7 @@ COPY src ./src
 RUN mvn -q -B -DskipTests package
 
 # ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:8-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
 
 # Create a non-root user/group and an app dir it owns (security best practice)
