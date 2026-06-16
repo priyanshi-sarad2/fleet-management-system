@@ -27,6 +27,7 @@ create_ecr_repository                 = true
 create_amazon_mq                      = true
 create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
+create_route53_zone                   = false
 create_codepipeline                   = false
 create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false
@@ -81,6 +82,10 @@ mq_application_user   = ["fleetman-app"]
 # 61617 = OpenWire over TLS (JMS). Add 8162 if you need the web console.
 mq_allowed_ingress_ports = [61617]
 
+
+
+########    Route 53 - Hosted Zone    ########
+domain_name = "priyanshiseniordevops.online"
 
 
 ########    CloudFront - Fleetman Webapp    ########

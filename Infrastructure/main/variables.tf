@@ -101,6 +101,18 @@ variable "single_nat_gateway" {
   default     = false
 }
 
+variable "create_route53_zone" {
+  description = "Controls if the Route53 public hosted zone for the domain should be created"
+  type        = bool
+  default     = false
+}
+
+variable "domain_name" {
+  description = "The apex/root domain for the Route53 hosted zone (e.g. example.com)"
+  type        = string
+  default     = null
+}
+
 variable "create_cloudfront_fleetman_webapp" {
   description = "Controls if the Fleetman webapp CloudFront distribution should be created"
   type        = bool

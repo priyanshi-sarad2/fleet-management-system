@@ -4,8 +4,14 @@ variable "create_route53_zone" {
   default     = false
 }
 
-variable "zone_name" {
+variable "domain_name" {
   description = "The domain name for the hosted zone (e.g. example.com)"
+  type        = string
+  default     = ""
+}
+
+variable "project_name" {
+  description = "Project name, used for tagging"
   type        = string
   default     = ""
 }
@@ -20,12 +26,6 @@ variable "zone_force_destroy" {
   description = "Destroy all records in the zone when destroying the zone"
   type        = bool
   default     = false
-}
-
-variable "zone_tags" {
-  description = "Tags to apply to the hosted zone"
-  type        = map(string)
-  default     = {}
 }
 
 variable "zone_records" {
