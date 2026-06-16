@@ -1315,7 +1315,7 @@ helm upgrade --install fleetman-position-tracker ./helm-chart \
 
 ## What the webapp is
 
-The webapp is the **Angular frontend** — the actual screen you look at in the browser. It shows a **map with the vehicles moving on it in real time**, and the **trace of the route each vehicle is taking as it moves** (drawn as a trail/line on the map). It doesn't store anything itself; it simply connects to the **API Gateway**, receives live position updates, and draws them on the map.
+The webapp is the **Angular** frontend, written in **TypeScript** (Angular compiles it down to the JavaScript, HTML and CSS that run in the browser). It shows a **map with the vehicles moving on it in real time**, and the **trace of the route each vehicle is taking as it moves** (drawn as a trail/line on the map). It doesn't store anything itself; it simply connects to the **API Gateway**, receives live position updates, and draws them on the map.
 
 It is **both a Single Page Application (SPA) and a static site** — these aren't opposites, they describe two different things:
 
@@ -1324,17 +1324,76 @@ It is **both a Single Page Application (SPA) and a static site** — these aren'
 
 ## It's a Single Page Application (SPA)
 
-A SPA works in three simple steps:
-
-1. **Initial load (once):** the server sends **one file** — `index.html` — plus the **JavaScript bundle**. You can see this single entry point in `src/index.html`: the whole body is just `<app-root></app-root>`, and Angular's JavaScript renders everything inside it (the header, the map, the vehicle list).
-2. **Routing happens in the browser:** from then on, a **client-side router** (part of that JavaScript) handles navigation. When you move around the app, the JavaScript **swaps the view in the browser** instead of asking the server for a brand-new page.
-3. **Only data is fetched:** after the first load, the app talks to the server **only for data** (JSON from the API) — never for whole pages.
+A **Single Page Application** serves **one HTML file** (`index.html`) once, and from then on the **browser** runs the app and renders every screen using JavaScript. The server is no longer asked for new pages — only for data.
 
 ![How a Single Page Application works](assets/spa-diagram.png)
 
-This is the opposite of a traditional **multi-page** website, where every click makes the server build and return a whole new HTML page and the browser reloads. Because a SPA avoids those reloads, it feels fast and app-like.
+### The "app shell": one index.html
 
-> In this project, Fleetman is a **simple single-view SPA** — it renders everything client-side from one `index.html`. It doesn't define multiple routes (no Angular Router in the code), but the model is the same, and the way we host it (just serve the static files) is identical either way.
+`index.html` is the **app shell** — a near-empty page whose only job is to be a **mount point** for the app and to load the JavaScript and CSS bundles. In Fleetman (Angular) the entire `src/index.html` body is just:
+
+```html
+<body>
+  <app-root></app-root>
+</body>
+```
+
+`<app-root>` is the empty slot Angular fills in. (In a React app the same idea is `<div id="root"></div>`.) The shell then loads:
+
+- the **JS bundle** — the compiled app code + the routing logic + the code that calls the backend APIs, and
+- the **CSS bundle** — the compiled styles (plus static assets like images/fonts).
+
+The actual **dynamic content is not inside the bundle** — the bundle fetches it from the APIs at runtime.
+
+### Client-side rendering and client-side routing
+
+Two pieces do the work in a typical SPA (React shown as the classic example; Angular works the same way):
+
+- **The UI library** (React / Angular) is the **rendering engine** — it decides what HTML to show based on the app's state and renders it into the DOM (`<App />` into `#root`, or Angular components into `<app-root>`). This is **client-side rendering**: the HTML is built in the **browser**, which is what makes navigation feel instant.
+- **The router** (e.g. React Router) is the **navigation controller** — it watches the browser URL and decides which screen/component to render for that path. The key point: **routing happens in the browser, not on the server.**
+
+### Step by step: how a SPA loads and navigates
+
+**1. First load (cold load)** — the user opens `https://app.example.com/` (or a deep link like `/users/42`):
+
+```text
+Browser ── GET / ───────────────▶ Host
+Browser ◀── 200, index.html ───── Host          (the app shell)
+Browser ── GET /assets/app.js ──▶ Host
+Browser ── GET /assets/app.css ─▶ Host
+Browser ◀── 200 (real files) ──── Host          (these ARE real files)
+        │
+        ▼
+   JS boots ▶ mounts the app into <app-root> ▶ router reads the URL ▶ renders the screen
+```
+
+**2. Navigating inside the app (no refresh)** — the user clicks a link, e.g. `/users` → `/users/42`:
+
+```text
+Click ▶ Router uses the History API (pushState) ▶ URL changes to /users/42
+        │   (NO request to the host for HTML)
+        ▼
+   React / Angular renders the new screen in the same already-loaded page
+        │
+        ▼   (only if that screen needs data)
+   fetch() / XHR ──▶ Backend API ──▶ returns JSON      (data, not a webpage)
+```
+
+No new HTML page is downloaded — it's the same `index.html` and the same JS runtime. Only **API data** travels over the network. That's why SPAs feel fast.
+
+**3. Refresh or a direct deep link** — the user refreshes on `/users/42`, opens it in a new tab, or hard-navigates:
+
+```text
+Browser ── GET /users/42 ───────▶ Host
+```
+
+Now the browser **does** ask the host for `/users/42`. But `/users/42` is **not a real file** — only `index.html` and the `/assets/*` files exist on disk. So for the SPA to work, the host must return **`index.html` with `200 OK`** for any such app route, and then let the in-browser router take over and render `/users/42`. (Requests for real files under `/assets/*` are still served normally.) This "**return `index.html` for app routes**" behaviour is the one special thing hosting an SPA needs — how that's configured for this project is covered further below.
+
+### How this maps to Fleetman
+
+Fleetman is an **Angular SPA**: one `index.html` with `<app-root>`, a JS bundle that renders the map and vehicle list **in the browser**, and live vehicle data pulled from the **API Gateway** (REST + WebSocket) at runtime.
+
+> Accuracy note: Fleetman is a **simple single-view SPA** — it renders everything client-side, but it does **not** define multiple routes (there is no Angular Router in its code), so it has no deep links like `/users/42`. The routing steps above describe SPAs **in general** (an admin dashboard is the classic multi-route example). The app-shell + client-side-rendering model is identical, and so is the way you host it.
 
 ## ...and it builds into static files (what "static" means)
 
