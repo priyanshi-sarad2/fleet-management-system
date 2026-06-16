@@ -107,12 +107,6 @@ variable "create_route53_zone" {
   default     = false
 }
 
-variable "domain_name" {
-  description = "The apex/root domain for the Route53 hosted zone (e.g. example.com)"
-  type        = string
-  default     = null
-}
-
 variable "zone_records" {
   description = "Map of DNS records to create in the Route53 zone (keep empty to manage records manually)"
   type        = any

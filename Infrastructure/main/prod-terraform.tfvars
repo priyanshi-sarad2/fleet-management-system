@@ -14,7 +14,6 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 web_apps = {
   "fleetman-webapp" = {
     domain = "fleetman.priyanshiseniordevops.online"
-    acm_certificate_arn = "arn:aws:acm:us-east-1:331860160408:certificate/8b217ec7-9f23-45f6-bcf0-0603c77ba462"
     alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
   }
 }
@@ -27,7 +26,7 @@ create_ecr_repository                 = true
 create_amazon_mq                      = true
 create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
-create_route53_zone                   = false
+create_route53_zone                   = true
 create_codepipeline                   = false
 create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false
@@ -85,15 +84,13 @@ mq_allowed_ingress_ports = [61617]
 
 
 ########    Route 53 - Hosted Zone    ########
-domain_name = "priyanshiseniordevops.online"
-# Keep empty to manage DNS records manually in the console (Terraform won't touch them).
+# The hosted-zone domain is derived from the web_apps map (apex of the webapp domain).
+# Keep records empty to manage DNS records manually in the console (Terraform won't touch them).
 zone_records = {}
 
 
 ########    CloudFront - Fleetman Webapp    ########
-fleetman_webapp_domain            = "fleetman.priyanshiseniordevops.online"
-acm_certificate_arn               = "arn:aws:acm:us-east-1:331860160408:certificate/8b217ec7-9f23-45f6-bcf0-0603c77ba462"
-fleetman_webapp_alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
+
 
 
 
