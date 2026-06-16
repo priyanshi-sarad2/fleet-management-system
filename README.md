@@ -1324,14 +1324,17 @@ It is **both a Single Page Application (SPA) and a static site** — these aren'
 
 ## It's a Single Page Application (SPA)
 
-A SPA loads **one** HTML page a single time, and from then on **JavaScript updates the screen in the browser** — it never reloads a whole new page from the server. You can see this in `src/index.html`: the entire body is just `<app-root></app-root>`, and Angular's JavaScript renders everything inside it (the header, the map, the vehicle list).
+A SPA works in three simple steps:
 
-Compare that with a traditional "multi-page" website, where every click asks the server for a brand-new full HTML page:
+1. **Initial load (once):** the server sends **one file** — `index.html` — plus the **JavaScript bundle**. You can see this single entry point in `src/index.html`: the whole body is just `<app-root></app-root>`, and Angular's JavaScript renders everything inside it (the header, the map, the vehicle list).
+2. **Routing happens in the browser:** from then on, a **client-side router** (part of that JavaScript) handles navigation. When you move around the app, the JavaScript **swaps the view in the browser** instead of asking the server for a brand-new page.
+3. **Only data is fetched:** after the first load, the app talks to the server **only for data** (JSON from the API) — never for whole pages.
 
-![Single Page Application vs Traditional Multi-Page App](assets/spa-diagram.png)
+![How a Single Page Application works](assets/spa-diagram.png)
 
-- **Traditional multi-page app:** each action → the server builds and returns a whole new HTML page → the browser reloads.
-- **SPA:** the page (HTML + JavaScript) is downloaded **once**, then the JavaScript only fetches **data** (JSON) from the API and updates the screen in place — no full reloads, so it feels fast and app-like.
+This is the opposite of a traditional **multi-page** website, where every click makes the server build and return a whole new HTML page and the browser reloads. Because a SPA avoids those reloads, it feels fast and app-like.
+
+> In this project, Fleetman is a **simple single-view SPA** — it renders everything client-side from one `index.html`. It doesn't define multiple routes (no Angular Router in the code), but the model is the same, and the way we host it (just serve the static files) is identical either way.
 
 ## ...and it builds into static files (what "static" means)
 
