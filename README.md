@@ -1469,3 +1469,8 @@ A **CDN (Content Delivery Network)** is a worldwide network of caching servers c
 - **Scales with traffic** — the global edge network absorbs spikes instead of hammering one region.
 
 When you ship a new version of the site, you tell CloudFront to **invalidate** the cache, so the edges drop their old copies and pull the fresh files from the origin on the next request.
+
+### How it's provisioned and deployed
+
+- **Infrastructure as Code (Terraform)** — the **S3 bucket and the CloudFront distribution** (along with the OAC, bucket policy, HTTPS/ACM certificate and security-header settings) are provisioned with **Terraform**, under `Infrastructure/`. The whole setup is codified and repeatable instead of being clicked together in the console.
+- **Automated deploys (CodePipeline)** — new changes to the webapp are shipped through **AWS CodePipeline**. For the static webapp the pipeline runs: **Source → Build (`npm run build`) → deploy the `dist/` files to S3 → invalidate the CloudFront cache**. So a code push results in the updated site going live automatically, with no manual upload step.
