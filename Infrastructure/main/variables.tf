@@ -113,6 +113,12 @@ variable "domain_name" {
   default     = null
 }
 
+variable "zone_records" {
+  description = "Map of DNS records to create in the Route53 zone (keep empty to manage records manually)"
+  type        = any
+  default     = {}
+}
+
 variable "create_cloudfront_fleetman_webapp" {
   description = "Controls if the Fleetman webapp CloudFront distribution should be created"
   type        = bool

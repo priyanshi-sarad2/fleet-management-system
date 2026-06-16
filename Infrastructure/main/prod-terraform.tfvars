@@ -86,6 +86,8 @@ mq_allowed_ingress_ports = [61617]
 
 ########    Route 53 - Hosted Zone    ########
 domain_name = "priyanshiseniordevops.online"
+# Keep empty to manage DNS records manually in the console (Terraform won't touch them).
+zone_records = {}
 
 
 ########    CloudFront - Fleetman Webapp    ########
