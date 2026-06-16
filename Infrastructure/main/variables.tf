@@ -101,6 +101,16 @@ variable "single_nat_gateway" {
   default     = false
 }
 
+variable "web_apps" {
+  description = "Map of web apps to front with CloudFront (key = app name)"
+  type = map(object({
+    domain              = string
+    alb_origin_domain   = string
+    acm_certificate_arn = optional(string)
+  }))
+  default = {}
+}
+
 variable "create_route53_zone" {
   description = "Controls if the Route53 public hosted zone for the domain should be created"
   type        = bool

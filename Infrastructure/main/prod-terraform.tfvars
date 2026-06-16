@@ -21,12 +21,12 @@ web_apps = {
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = true
+create_vpc                            = false
 create_ecr_repository                 = true
-create_amazon_mq                      = true
-create_eks_cluster                    = true
+create_amazon_mq                      = false
+create_eks_cluster                    = false
 create_cloudfront_fleetman_webapp     = false
-create_route53_zone                   = true
+create_route53_zone                   = false
 create_codepipeline                   = false
 create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false
