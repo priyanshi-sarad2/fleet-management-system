@@ -1434,7 +1434,7 @@ These are exactly the static files a web server hands to the browser.
 Then either:
 
 - Copy the contents of `dist/` into a web server like **Nginx** (e.g. `/usr/share/nginx/html/`) and it serves them, **or**
-- Build an **Nginx Docker image** that compiles the app and serves `dist/` with Nginx. This is exactly how the webapp ran on the earlier **Docker Desktop Kubernetes** setup — a small Nginx pod behind a Service.
+- Build an **Nginx Docker image** that compiles the app and serves `dist/` with Nginx.
 
 ```bash
 docker build -t fleetman-webapp .
