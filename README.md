@@ -1450,18 +1450,22 @@ For this project we host the static SPA on **Amazon S3 + CloudFront** instead of
 - **Amazon S3** — a **private** bucket that simply **stores** the built files (`index.html`, JS, CSS).
 - **Amazon CloudFront** — a **CDN** that sits in front of the bucket and **serves** the files to users. It caches them at edge locations close to the user (fast everywhere), provides **HTTPS** with an ACM certificate, and adds security headers. CloudFront is the only thing allowed to read the bucket, so the bucket itself stays private.
 
-Deploying (or updating) the site is just **build → upload → refresh the cache**:
+### What a CDN is (and why CloudFront)
 
-```bash
-# 1. Build the static files
-npm ci
-npm run build
+A **CDN (Content Delivery Network)** is a worldwide network of caching servers called **edge locations**. Your files physically live in **one** place — the S3 bucket in a single AWS region (the **origin**). Without a CDN, a user on the other side of the world would have to fetch every file all the way from that one region, which is slow. CloudFront fixes this by **caching copies of your files at edge locations around the globe** and serving each user from the **edge nearest to them**.
 
-# 2. Upload them to the S3 bucket
-aws s3 sync dist/ s3://<webapp-bucket-name>/ --delete
+![How a CDN delivers the site](assets/cdn-diagram.png)
 
-# 3. Tell CloudFront to drop its cached copy so users get the new version
-aws cloudfront create-invalidation --distribution-id <distribution-id> --paths "/*"
-```
+**How a request flows:**
 
-`--delete` removes old files that are no longer in the new build, and the invalidation forces CloudFront's edge caches to fetch the fresh files instead of serving the stale cached ones. In this project the S3 bucket and CloudFront distribution are created with Terraform (under `Infrastructure/`), so the one-time setup is codified rather than clicked together by hand.
+1. A user requests the site. CloudFront automatically routes them to the **nearest edge location**.
+2. **Cache hit** — if that edge already has the file, it returns it immediately; the request never travels to the origin. This is the fast, common case.
+3. **Cache miss** — if the edge doesn't have it yet (e.g. the first visitor in that region), the edge fetches it **once** from the **origin (the S3 bucket)**, sends it to the user, and **stores it in its cache** so the next visitors in that region get it instantly.
+
+**Why this matters:**
+
+- **Faster for everyone** — files travel a short hop from a nearby edge instead of across the planet, so the site loads quickly no matter where the user is.
+- **Less load on the origin** — most requests are answered by the edge caches, so the S3 bucket is barely touched.
+- **Scales with traffic** — the global edge network absorbs spikes instead of hammering one region.
+
+When you ship a new version of the site, you tell CloudFront to **invalidate** the cache, so the edges drop their old copies and pull the fresh files from the origin on the next request.
