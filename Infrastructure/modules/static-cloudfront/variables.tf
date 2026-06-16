@@ -20,16 +20,6 @@ variable "website_name" {
 
 
 
-variable "create_distribution" {
-  description = "Whether to create the CloudFront distribution"
-  type        = bool
-  default     = false
-}
-variable "create_cloudfront_oac" {
-  description = "Whether to create the CloudFront distribution"
-  type        = bool
-  default     = false
-}
 variable "s3_regional_domain_name" {
   description = "The regional domain name of the S3 bucket"
   type        = string

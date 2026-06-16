@@ -11,7 +11,6 @@ locals {
 
 
 resource "aws_cloudfront_origin_access_control" "cloudfront-distribution-OAC" {
-  count                             = var.create_cloudfront_oac ? 1 : 0
   name                              = "${var.website_name}-distribution-OAC"
   description                       = "${var.website_name}-distribution-OAC"
   origin_access_control_origin_type = "s3"
@@ -22,11 +21,9 @@ resource "aws_cloudfront_origin_access_control" "cloudfront-distribution-OAC" {
 
 resource "aws_cloudfront_distribution" "cloudfront-distribution" {
 
-  count = var.create_distribution ? 1 : 0
-
   origin {
     domain_name              = var.s3_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.cloudfront-distribution-OAC[0].id
+    origin_access_control_id = aws_cloudfront_origin_access_control.cloudfront-distribution-OAC.id
     origin_id                = local.s3_origin_id
   }
 
