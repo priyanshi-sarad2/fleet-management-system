@@ -7,8 +7,8 @@ autoscaling:
   enabled: false
 
 image:
-  repository: "331860160408.dkr.ecr.us-east-1.amazonaws.com/fleetman-position-simulator"
-  tag: "latest"
+  repository: "176777036446.dkr.ecr.us-east-1.amazonaws.com/fleetman-position-simulator"
+  tag: "v16-06-26-11-30-55"
   pullPolicy: Always
 
 # The simulator only publishes to the queue and exposes no port, so it gets no Service.

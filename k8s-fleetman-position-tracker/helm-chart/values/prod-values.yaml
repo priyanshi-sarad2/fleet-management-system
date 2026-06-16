@@ -7,8 +7,8 @@ autoscaling:
   enabled: false
 
 image:
-  repository: "331860160408.dkr.ecr.us-east-1.amazonaws.com/fleetman-position-tracker"
-  tag: "latest"
+  repository: "176777036446.dkr.ecr.us-east-1.amazonaws.com/fleetman-position-tracker"
+  tag: "v16-06-26-11-30-55"
   pullPolicy: Always
 
 service:
