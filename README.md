@@ -1387,7 +1387,7 @@ No new HTML page is downloaded — it's the same `index.html` and the same JS ru
 Browser ── GET /users/42 ───────▶ Host
 ```
 
-Now the browser **does** ask the host for `/users/42`. But `/users/42` is **not a real file** — only `index.html` and the `/assets/*` files exist on disk. So for the SPA to work, the host must return **`index.html` with `200 OK`** for any such app route, and then let the in-browser router take over and render `/users/42`. (Requests for real files under `/assets/*` are still served normally.) This "**return `index.html` for app routes**" behaviour is the one special thing hosting an SPA needs — how that's configured for this project is covered further below.
+Now the browser **does** ask the host for `/users/42`. But `/users/42` is **not a real file** — it's **just a path** (a client-side route that only the in-browser router understands). On disk the host only has `index.html` and the `/assets/*` files; there is no `users/42` file or folder sitting on the server. So for the SPA to work, the host must return **`index.html` with `200 OK`** for any such app route, and then let the in-browser router take over and render `/users/42`. (Requests for real files under `/assets/*` are still served normally.) This "**return `index.html` for app routes**" behaviour is the one special thing hosting an SPA needs — how that's configured for this project is covered further below.
 
 ### How this maps to Fleetman
 
