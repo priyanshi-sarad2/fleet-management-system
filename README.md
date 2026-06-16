@@ -1422,6 +1422,15 @@ npm ci
 npm run build      # produces the dist/ folder of static files
 ```
 
+That `dist/` folder **is** the bundle — the whole website as plain files. It typically contains:
+
+- `index.html` — the app shell
+- the **JS bundle(s)** — the compiled app code (e.g. `runtime.js`, `polyfills.js`, `main.js`, often with content hashes like `main.abc123.js`)
+- the **CSS bundle** — the compiled styles (e.g. `styles.css`)
+- an `assets/` folder — static files like images, fonts, marker icons
+
+These are exactly the static files a web server hands to the browser.
+
 Then either:
 
 - Copy the contents of `dist/` into a web server like **Nginx** (e.g. `/usr/share/nginx/html/`) and it serves them, **or**
