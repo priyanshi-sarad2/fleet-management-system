@@ -8,7 +8,7 @@ autoscaling:
 
 image:
   repository: "176777036446.dkr.ecr.us-east-1.amazonaws.com/fleetman-api-gateway"
-  tag: "v16-06-26-11-30-55"
+  tag: "v16-06-26-14-43-09"
   pullPolicy: Always
 
 service:

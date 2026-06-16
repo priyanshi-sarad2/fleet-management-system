@@ -28,7 +28,11 @@ phases:
   build:
     commands:
       - echo "Deploying with Helm..."
-      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m 
+      # --force-conflicts: charts with an ExternalSecret share ownership of fields (e.g. .spec.refreshInterval)
+      # with the external-secrets controller. Helm 4 uses server-side apply, so without this flag the upgrade
+      # fails with a field-manager conflict. This lets Helm take ownership and apply cleanly. Harmless here
+      # (api-gateway has no ExternalSecret) but kept identical across all services' deployspecs.
+      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m --force-conflicts 
       # this command installs the Helm chart in the namespace and waits for the deployment to be ready.
       # If the release is already installed, this command will upgrade the release to the new version.
       # If the release is not installed, this command will install the release.
