@@ -1315,7 +1315,7 @@ helm upgrade --install fleetman-position-tracker ./helm-chart \
 
 ## What the webapp is
 
-The webapp is the **Angular frontend** — the actual screen you look at in the browser. It shows a **map with the vehicles moving on it in real time**, plus a list of vehicles and their speed. It doesn't store anything itself; it simply connects to the **API Gateway**, receives live position updates, and draws them on the map.
+The webapp is the **Angular frontend** — the actual screen you look at in the browser. It shows a **map with the vehicles moving on it in real time**, and the **trace of the route each vehicle is taking as it moves** (drawn as a trail/line on the map). It doesn't store anything itself; it simply connects to the **API Gateway**, receives live position updates, and draws them on the map.
 
 It is **both a Single Page Application (SPA) and a static site** — these aren't opposites, they describe two different things:
 
