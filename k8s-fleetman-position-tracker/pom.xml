@@ -22,6 +22,10 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
+		<!-- Override Spring Boot 1.4's ancient mongo-java-driver (3.2.2) with the last 3.x
+		     release. 3.12.x runs on Java 8, keeps the 3.x API (so no code changes), and adds
+		     SNI + modern TLS so it can connect to current MongoDB Atlas. -->
+		<mongodb.version>3.12.14</mongodb.version>
 	</properties>
 
 	<dependencies>
