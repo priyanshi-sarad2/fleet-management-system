@@ -11,6 +11,13 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 
+web_apps = {
+  "fleetman-webapp" = {
+    domain = "fleetman.priyanshiseniordevops.online"
+    acm_certificate_arn = "arn:aws:acm:us-east-1:331860160408:certificate/8b217ec7-9f23-45f6-bcf0-0603c77ba462"
+    alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
+  }
+}
 
 
 ########    Creation toggles (default: create nothing)    ########
