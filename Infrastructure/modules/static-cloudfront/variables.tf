@@ -1,4 +1,4 @@
-########   Global   ########
+########   Global / tagging   ########
 variable "name" {
   description = "Project Name -> Name to be used on all the resources as identifier"
   type        = string
@@ -13,20 +13,36 @@ variable "env" {
   type    = string
   default = null
 }
-variable "website_name" {
-  type = string
+variable "project_name" {
+  description = "Project name (used to build the CloudFront origin id)"
+  type        = string
+  default     = ""
 }
 
-
-
-
-variable "s3_regional_domain_name" {
-  description = "The regional domain name of the S3 bucket"
+########   Origin Access Control   ########
+variable "cloudfront_oac_name" {
+  description = "Name for the CloudFront Origin Access Control"
   type        = string
+}
+variable "cloudfront_oac_description" {
+  description = "Description for the CloudFront Origin Access Control"
+  type        = string
+  default     = null
+}
+
+########   Origin / distribution   ########
+variable "s3_regional_domain_name" {
+  description = "The regional domain name of the S3 bucket (CloudFront origin)"
+  type        = string
+}
+variable "cloudfront_comment" {
+  description = "Comment shown on the CloudFront distribution"
+  type        = string
+  default     = null
 }
 variable "cloudfront_root_object" {
+  description = "Root object to serve for the CloudFront distribution"
   type        = string
-  description = "Root object to serve for CloudFront distribution"
   default     = null
 }
 variable "static_cloudfront_aliases" {
@@ -34,35 +50,38 @@ variable "static_cloudfront_aliases" {
   type        = list(string)
   default     = []
 }
-variable "static_cloudfront_price_class" {
+variable "cloudfront_price_class" {
   description = "The price class for this distribution. One of PriceClass_All, PriceClass_200, PriceClass_100"
   type        = string
   default     = null
 }
 
+########   Cache TTLs   ########
 variable "min_ttl" {
   description = "Minimum TTL (seconds) for objects in the CloudFront cache"
   type        = number
   default     = 0
 }
-
 variable "default_ttl" {
   description = "Default TTL (seconds) for objects in the CloudFront cache"
   type        = number
   default     = 3600
 }
-
 variable "max_ttl" {
   description = "Maximum TTL (seconds) for objects in the CloudFront cache"
   type        = number
   default     = 86400
 }
-variable "acm_certificate_arn" { # Will be same for all cloudfront
-  description = "ARN of the public certificate you created from AWS Certificate Manager"
+
+########   TLS   ########
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate (must be in us-east-1 for CloudFront)"
   type        = string
 }
+
+########   Cache behaviour   ########
 variable "allowed_methods" {
-  description = "List of HTTP methods allowed for the CloudFront distribution or S3 bucket."
+  description = "List of HTTP methods allowed for the CloudFront distribution."
   type        = list(string)
 }
 variable "cached_methods" {
@@ -70,47 +89,23 @@ variable "cached_methods" {
   type        = list(string)
 }
 variable "cookies_forward" {
-  type = string
+  description = "How CloudFront forwards cookies to the origin (none/whitelist/all)"
+  type        = string
 }
-variable "public_key" {
-  type    = string
-  default = null
-}
-variable "key_group" {
-  type    = string
-  default = null
-}
-variable "enable_cloudfront_key" {
-  type    = bool
-  default = false
-}
+
+########   SPA error page fallback   ########
 variable "enable_error_page" {
-  description = "Flag to enable or disable custom error pages"
+  description = "Flag to enable or disable custom error pages (SPA fallback)"
   type        = bool
   default     = false
 }
 variable "error_response_page" {
-  type    = string
-  default = null
+  description = "Page to serve for the custom error response (e.g. /index.html)"
+  type        = string
+  default     = null
 }
 variable "error_code" {
-  type    = number
-  default = null
-}
-
-variable "enable_frontend_response_headers" {
-  type    = bool
-  default = false
-}
-variable "response_headers_policy_name" {
-  type    = string
-  default = null
-}
-variable "frontend_csp_whitelist" {
-  type    = string
-  default = null
-}
-variable "frontend_referrer_policy" {
-  type    = string
-  default = null
+  description = "Error code to remap to the error_response_page (e.g. 403)"
+  type        = number
+  default     = null
 }
