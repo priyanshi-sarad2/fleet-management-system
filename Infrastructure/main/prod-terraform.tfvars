@@ -27,6 +27,7 @@ create_amazon_mq                      = true
 create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
 create_route53_zone                   = true
+create_acm_certificate                = true
 create_codepipeline                   = false
 create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false

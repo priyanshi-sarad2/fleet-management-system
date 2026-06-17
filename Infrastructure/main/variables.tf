@@ -117,6 +117,12 @@ variable "create_route53_zone" {
   default     = false
 }
 
+variable "create_acm_certificate" {
+  description = "Controls if the public ACM certificate (DNS-validated via Route53) should be created"
+  type        = bool
+  default     = false
+}
+
 variable "zone_records" {
   description = "Map of DNS records to create in the Route53 zone (keep empty to manage records manually)"
   type        = any
