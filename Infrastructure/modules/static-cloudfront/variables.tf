@@ -39,6 +39,24 @@ variable "static_cloudfront_price_class" {
   type        = string
   default     = null
 }
+
+variable "min_ttl" {
+  description = "Minimum TTL (seconds) for objects in the CloudFront cache"
+  type        = number
+  default     = 0
+}
+
+variable "default_ttl" {
+  description = "Default TTL (seconds) for objects in the CloudFront cache"
+  type        = number
+  default     = 3600
+}
+
+variable "max_ttl" {
+  description = "Maximum TTL (seconds) for objects in the CloudFront cache"
+  type        = number
+  default     = 86400
+}
 variable "acm_certificate_arn" { # Will be same for all cloudfront
   description = "ARN of the public certificate you created from AWS Certificate Manager"
   type        = string

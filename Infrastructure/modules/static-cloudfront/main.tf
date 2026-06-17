@@ -1,5 +1,5 @@
 locals {
-  cloudfront_origin_id = "s3-${var.website_name}"
+  cloudfront_origin_id = "s3-${var.project_name}-${var.env}"
 }
 /*
   Here we are defining a local variable
@@ -9,16 +9,18 @@ locals {
   a single origin.
 */
 
-
+# CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "cloudfront-distribution-OAC" {
-  name                              = "${var.website_name}-distribution-OAC"
-  description                       = "${var.website_name}-distribution-OAC"
+  name                              = var.cloudfront_oac_name
+  description                       = var.cloudfront_oac_description
+
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
 }
 
 
+# CloudFront Distribution
 resource "aws_cloudfront_distribution" "cloudfront-distribution" {
 
   origin {
@@ -29,7 +31,7 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
 
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "${var.website_name}-distribution"
+  comment             = var.cloudfront_comment
   default_root_object = var.cloudfront_root_object
   aliases             = var.static_cloudfront_aliases
 
@@ -48,12 +50,10 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
     }
 
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+    min_ttl                = var.min_ttl
+    default_ttl            = var.default_ttl
+    max_ttl                = var.max_ttl
     compress               = true
-
-    trusted_key_groups = var.enable_cloudfront_key ? [aws_cloudfront_key_group.key_group[0].id] : []
 
     response_headers_policy_id = var.enable_frontend_response_headers ? aws_cloudfront_response_headers_policy.frontend_response_headers_policy[0].id : null
   }
@@ -93,31 +93,9 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
   }
 }
 
-resource "aws_cloudfront_public_key" "public_key" {
-  count       = var.enable_cloudfront_key ? 1 : 0
-  name        = var.public_key
-  encoded_key = var.env == "prod" ? file("../modules/static-cloudfront/prod_media_cloudfront_public_key.pem") : file("../modules/static-cloudfront/media_cloudfront_public_key.pem")
-  comment     = "Media Cloudfront public key"
-
-  lifecycle {
-    ignore_changes = [
-      encoded_key
-    ]
-  }
-}
-
-resource "aws_cloudfront_key_group" "key_group" {
-  count = var.enable_cloudfront_key ? 1 : 0
-
-  name = var.key_group
-
-  items = [
-    aws_cloudfront_public_key.public_key[0].id,
-  ]
-}
 
 
-
+########    CloudFront Response Headers Policy     ########
 resource "aws_cloudfront_response_headers_policy" "frontend_response_headers_policy" {
   count = var.enable_frontend_response_headers ? 1 : 0
   name  = var.response_headers_policy_name
