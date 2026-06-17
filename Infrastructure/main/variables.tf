@@ -101,6 +101,12 @@ variable "single_nat_gateway" {
   default     = false
 }
 
+variable "root_domain" {
+  description = "Root/apex domain for the Route53 hosted zone and ACM certificate (e.g. example.com)"
+  type        = string
+  default     = null
+}
+
 variable "cloudfront_s3_origins" {
   description = "Map of static (S3-backed) web apps to front with CloudFront (key = app name)"
   type = map(object({

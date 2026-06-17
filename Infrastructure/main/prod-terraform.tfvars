@@ -3,7 +3,8 @@ project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
 
-alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
+# Root/apex domain for the Route53 hosted zone + ACM certificate
+root_domain = "priyanshiseniordevops.online"
 
 
 # Application services
@@ -15,24 +16,30 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 # account_id is provided via the TF_VAR_account_id environment variable
 
 cloudfront_s3_origins = {
-  "fleetman-webapp" = {
-    domain = "fleetman.priyanshiseniordevops.online"
-  }
 }
+# cloudfront_s3_origins = {
+#   "fleetman-webapp" = {
+#     domain = "fleetman.priyanshiseniordevops.online"
+#   }
+# }
 
-cloudfront_alb_origins = {
-  "fleetman-alb" = {
-    domain = "fleetman-alb.priyanshiseniordevops.online"
-  }
-}
+# cloudfront_alb_origins = {
+# }
+
+# cloudfront_alb_origins = {
+#   "fleetman-alb" = {
+#     domain = "fleetman-alb.priyanshiseniordevops.online"
+#   }
+# }
+
 
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = true
-create_ecr_repository                 = true
-create_amazon_mq                      = true
-create_eks_cluster                    = true
+create_vpc                            = false
+create_ecr_repository                 = false
+create_amazon_mq                      = false
+create_eks_cluster                    = false
 create_cloudfront_fleetman_webapp     = false
 create_route53_zone                   = true
 create_acm_certificate                = true
