@@ -101,12 +101,10 @@ variable "single_nat_gateway" {
   default     = false
 }
 
-variable "web_apps" {
-  description = "Map of web apps to front with CloudFront (key = app name)"
+variable "cloudfront_s3_origins" {
+  description = "Map of static (S3-backed) web apps to front with CloudFront (key = app name)"
   type = map(object({
-    domain              = string
-    alb_origin_domain   = string
-    acm_certificate_arn = optional(string)
+    domain = string
   }))
   default = {}
 }

@@ -3,6 +3,9 @@ project_name = "fleetman"
 region       = "us-east-1"
 env          = "prod"
 
+alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
+
+
 # Application services
 apps = ["api-gateway", "position-simulator", "position-tracker"]
 
@@ -11,10 +14,15 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 
-web_apps = {
+cloudfront_s3_origins = {
   "fleetman-webapp" = {
     domain = "fleetman.priyanshiseniordevops.online"
-    alb_origin_domain = "fleetman-alb.priyanshiseniordevops.online"
+  }
+}
+
+cloudfront_alb_origins = {
+  "fleetman-alb" = {
+    domain = "fleetman-alb.priyanshiseniordevops.online"
   }
 }
 

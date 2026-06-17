@@ -54,12 +54,10 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
     default_ttl            = var.default_ttl
     max_ttl                = var.max_ttl
     compress               = true
-
-    response_headers_policy_id = var.enable_frontend_response_headers ? aws_cloudfront_response_headers_policy.frontend_response_headers_policy[0].id : null
   }
 
 
-  price_class = var.static_cloudfront_price_class
+  price_class = var.cloudfront_price_class
 
   restrictions {
     geo_restriction {
@@ -89,55 +87,6 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
       response_code         = 200
       response_page_path    = var.error_response_page
       error_caching_min_ttl = 300
-    }
-  }
-}
-
-
-
-########    CloudFront Response Headers Policy     ########
-resource "aws_cloudfront_response_headers_policy" "frontend_response_headers_policy" {
-  count = var.enable_frontend_response_headers ? 1 : 0
-  name  = var.response_headers_policy_name
-
-  security_headers_config {
-    content_security_policy {
-      override                = true // cloudfront will override any CSP policy received from origin from its own
-      content_security_policy = var.frontend_csp_whitelist
-    }
-
-    strict_transport_security {
-      override                   = true
-      access_control_max_age_sec = 31536000 // 1 year in seconds
-      include_subdomains         = true
-      preload                    = true
-    }
-
-    referrer_policy {
-      override        = true
-      referrer_policy = var.frontend_referrer_policy
-    }
-
-    xss_protection {
-      mode_block = true
-      override   = true
-      protection = true
-    }
-
-    content_type_options {
-      override = true
-    }
-
-    frame_options {
-      override     = true
-      frame_option = "SAMEORIGIN"
-    }
-  }
-  custom_headers_config {
-    items {
-      header   = "Permissions-Policy"
-      override = true
-      value    = "geolocation=(self); camera=(); microphone=();"
     }
   }
 }
