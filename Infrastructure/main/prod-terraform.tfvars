@@ -21,12 +21,12 @@ web_apps = {
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = false
+create_vpc                            = true
 create_ecr_repository                 = true
-create_amazon_mq                      = false
-create_eks_cluster                    = false
+create_amazon_mq                      = true
+create_eks_cluster                    = true
 create_cloudfront_fleetman_webapp     = false
-create_route53_zone                   = false
+create_route53_zone                   = true
 create_codepipeline                   = false
 create_secrets_manager                = true
 setup_eks_cluster_monitoring          = false
@@ -84,8 +84,6 @@ mq_allowed_ingress_ports = [61617]
 
 
 ########    Route 53 - Hosted Zone    ########
-# The hosted-zone domain is derived from the web_apps map (apex of the webapp domain).
-# Keep records empty to manage DNS records manually in the console (Terraform won't touch them).
 zone_records = {}
 
 

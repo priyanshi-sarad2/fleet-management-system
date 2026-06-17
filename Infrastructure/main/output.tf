@@ -8,9 +8,7 @@ output "eks_cluster_oidc_issuer_url" {
   value       = try(module.eks.cluster_oidc_issuer_url, null)
 }
 
-
-# # Output the private key for the k8s nodes (shared key across all on-prem k8s nodes)
-# output "k8s_nodes_private_key" {
-#   value     = module.k8s-nodes-key-pair.private_key_pem
-#   sensitive = true
-# }
+# Output the Route53 zone name servers
+output "route53_zone_name_servers" {
+  value = module.route53.name_servers
+}
