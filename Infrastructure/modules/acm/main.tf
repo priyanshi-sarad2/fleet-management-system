@@ -7,12 +7,11 @@ module "acm" {
   create_certificate = var.create_public_certificate
 
   # CloudFront certs MUST be in us-east-1; pass the right region from the caller.
-  region                    = var.region
+  region                    = "us-east-1"
   domain_name               = var.domain_name
   subject_alternative_names = var.certificate_alternative_names
 
-  # DNS validation, with the validation records created automatically in our
-  # own Route 53 hosted zone (no manual CNAME copying needed).
+  # DNS validation, with the validation records created automatically in our own Route 53 hosted zone (no manual CNAME copying needed).
   validation_method      = "DNS"
   create_route53_records = true
   zone_id                = var.zone_id
