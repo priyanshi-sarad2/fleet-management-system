@@ -1,9 +1,9 @@
 locals {
-  s3_origin_id = "s3-${var.website_name}"
+  cloudfront_origin_id = "s3-${var.website_name}"
 }
 /*
   Here we are defining a local variable
-  s3_origin_id is just a label or internal reference used only inside your CloudFront distribution configuration
+  cloudfront_origin_id is just a label or internal reference used only inside your CloudFront distribution configuration
   It helps CloudFront link cache behaviors to a specific origin (like your S3 bucket)
   Since there can be multiple origins in cloudfront distribution - this origin-id helps to uniquely identify
   a single origin.
@@ -24,7 +24,7 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
   origin {
     domain_name              = var.s3_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.cloudfront-distribution-OAC.id
-    origin_id                = local.s3_origin_id
+    origin_id                = local.cloudfront_origin_id
   }
 
   enabled             = true
@@ -37,7 +37,7 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
   default_cache_behavior {
     allowed_methods  = var.allowed_methods
     cached_methods   = var.cached_methods
-    target_origin_id = local.s3_origin_id
+    target_origin_id = local.cloudfront_origin_id
 
     forwarded_values {
       query_string = true
