@@ -15,21 +15,23 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 
-# cloudfront_s3_origins = {
-# }
+# CloudFront temporarily disabled: account must be verified for CloudFront first
+# (AccessDenied on CreateDistribution -> contact AWS Support). Re-enable the entry
+# below once the account is verified.
+cloudfront_s3_origins = {}
 
-cloudfront_s3_origins = {
-  "fleetman-webapp" = {
-    domain          = "fleetman.priyanshiseniordevops.online"
-    root_object     = "index.html"
-    price_class     = "PriceClass_100"           # US, Canada, Europe only
-    allowed_methods = ["GET", "HEAD", "OPTIONS"] 
-    cached_methods  = ["GET", "HEAD"]            
-    cookies_forward = "none"                    
-    enable_error_page = true
-    error_code        = 403  
-  }
-}
+# cloudfront_s3_origins = {
+#   "fleetman-webapp" = {
+#     domain          = "fleetman.priyanshiseniordevops.online"
+#     root_object     = "index.html"
+#     price_class     = "PriceClass_100"           # US, Canada, Europe only
+#     allowed_methods = ["GET", "HEAD", "OPTIONS"]
+#     cached_methods  = ["GET", "HEAD"]
+#     cookies_forward = "none"
+#     enable_error_page = true
+#     error_code        = 403
+#   }
+# }
 
 # cloudfront_alb_origins = {
 # }
