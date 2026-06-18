@@ -110,7 +110,9 @@ variable "root_domain" {
 variable "cloudfront_s3_origins" {
   description = "Map of static (S3-backed) web apps to front with CloudFront (key = app name)"
   type = map(object({
-    domain = string
+    domain      = string
+    root_object = optional(string, "index.html")
+    price_class = optional(string, "PriceClass_100")
   }))
   default = {}
 }

@@ -15,13 +15,19 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # account_id is provided via the TF_VAR_account_id environment variable
 
-cloudfront_s3_origins = {
-}
 # cloudfront_s3_origins = {
-#   "fleetman-webapp" = {
-#     domain = "fleetman.priyanshiseniordevops.online"
-#   }
 # }
+# CloudFront price classes (cheapest -> most expensive):
+#   PriceClass_100 = US, Canada, Europe (+ Israel)            <- CHEAPEST
+#   PriceClass_200 = PriceClass_100 + Asia (incl. India), Middle East, Africa
+#   PriceClass_All = all edge locations (adds South America, Australia/NZ) - most expensive
+cloudfront_s3_origins = {
+  "fleetman-webapp" = {
+    domain      = "fleetman.priyanshiseniordevops.online"
+    root_object = "index.html"        # optional (defaults to "index.html")
+    price_class = "PriceClass_100"    # cheapest: US, Canada, Europe only
+  }
+}
 
 # cloudfront_alb_origins = {
 # }
@@ -37,7 +43,7 @@ cloudfront_s3_origins = {
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
 create_vpc                            = false
-create_ecr_repository                 = false
+create_ecr_repository                 = true
 create_amazon_mq                      = false
 create_eks_cluster                    = false
 create_cloudfront_fleetman_webapp     = false
