@@ -37,8 +37,8 @@ module "cloudfront_static" {
   cookies_forward = each.value.cookies_forward
 
   # SPA fallback: a private S3 bucket returns 403 for unknown paths -> serve index.html
-  enable_error_page   = true
-  error_code          = 403
+  enable_error_page   = each.value.enable_error_page
+  error_code          = each.value.error_code
   error_response_page = "/${each.value.root_object}"
 }
 

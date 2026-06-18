@@ -26,6 +26,9 @@ cloudfront_s3_origins = {
     allowed_methods = ["GET", "HEAD", "OPTIONS"] # optional (defaults to these)
     cached_methods  = ["GET", "HEAD"]            # optional (defaults to these)
     cookies_forward = "none"                     # optional (defaults to "none")
+
+    enable_error_page = true # optional, SPA fallback (defaults to true)
+    error_code        = 403  # optional, error to remap to the root object (defaults to 403)
   }
 }
 

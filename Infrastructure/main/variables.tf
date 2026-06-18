@@ -116,6 +116,10 @@ variable "cloudfront_s3_origins" {
     allowed_methods = optional(list(string), ["GET", "HEAD", "OPTIONS"])
     cached_methods  = optional(list(string), ["GET", "HEAD"])
     cookies_forward = optional(string, "none")
+
+    # SPA fallback (private S3 returns 403 for unknown paths -> serve the root object)
+    enable_error_page = optional(bool, true)
+    error_code        = optional(number, 403)
   }))
   default = {}
 }
