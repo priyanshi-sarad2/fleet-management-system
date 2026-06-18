@@ -21,14 +21,13 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 cloudfront_s3_origins = {
   "fleetman-webapp" = {
     domain          = "fleetman.priyanshiseniordevops.online"
-    root_object     = "index.html"               # optional (defaults to "index.html")
-    price_class     = "PriceClass_100"           # US, Canada, Europe only (cheapest)
-    allowed_methods = ["GET", "HEAD", "OPTIONS"] # optional (defaults to these)
-    cached_methods  = ["GET", "HEAD"]            # optional (defaults to these)
-    cookies_forward = "none"                     # optional (defaults to "none")
-
-    enable_error_page = true # optional, SPA fallback (defaults to true)
-    error_code        = 403  # optional, error to remap to the root object (defaults to 403)
+    root_object     = "index.html"
+    price_class     = "PriceClass_100"           # US, Canada, Europe only
+    allowed_methods = ["GET", "HEAD", "OPTIONS"] 
+    cached_methods  = ["GET", "HEAD"]            
+    cookies_forward = "none"                    
+    enable_error_page = true
+    error_code        = 403  
   }
 }
 
@@ -45,11 +44,10 @@ cloudfront_s3_origins = {
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = false
+create_vpc                            = true
 create_ecr_repository                 = true
-create_amazon_mq                      = false
-create_eks_cluster                    = false
-create_cloudfront_fleetman_webapp     = false
+create_amazon_mq                      = true
+create_eks_cluster                    = true
 create_route53_zone                   = true
 create_acm_certificate                = true
 create_codepipeline                   = false

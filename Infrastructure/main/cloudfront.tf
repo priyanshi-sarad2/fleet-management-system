@@ -42,6 +42,8 @@ module "cloudfront_static" {
   error_response_page = "/${each.value.root_object}"
 }
 
+
+
 # 3) Bucket policy: allow ONLY this CloudFront distribution (OAC) to read the bucket
 module "webapp_s3_policy" {
   for_each = var.cloudfront_s3_origins

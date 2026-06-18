@@ -142,12 +142,6 @@ variable "zone_records" {
   default     = {}
 }
 
-variable "create_cloudfront_fleetman_webapp" {
-  description = "Controls if the Fleetman webapp CloudFront distribution should be created"
-  type        = bool
-  default     = false
-}
-
 variable "fleetman_webapp_domain" {
   description = "Custom domain name for the Fleetman webapp CloudFront distribution"
   type        = string
