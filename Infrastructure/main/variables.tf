@@ -142,24 +142,6 @@ variable "zone_records" {
   default     = {}
 }
 
-variable "fleetman_webapp_domain" {
-  description = "Custom domain name for the Fleetman webapp CloudFront distribution"
-  type        = string
-  default     = null
-}
-
-variable "acm_certificate_arn" {
-  description = "ACM certificate ARN for CloudFront"
-  type        = string
-  default     = null
-}
-
-variable "fleetman_webapp_alb_origin_domain" {
-  description = "ALB DNS name used as the CloudFront origin for the Fleetman webapp"
-  type        = string
-  default     = null
-}
-
 ######## EKS ########
 
 variable "create_eks_cluster" {

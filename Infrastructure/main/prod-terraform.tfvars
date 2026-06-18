@@ -50,8 +50,9 @@ create_amazon_mq                      = true
 create_eks_cluster                    = true
 create_route53_zone                   = true
 create_acm_certificate                = true
-create_codepipeline                   = false
+create_codepipeline                   = true
 create_secrets_manager                = true
+
 setup_eks_cluster_monitoring          = false
 create_aws_prometheus_adot_writer_ecr = false
 
