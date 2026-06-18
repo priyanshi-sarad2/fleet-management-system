@@ -32,14 +32,14 @@ module "cloudfront_static" {
   # Cert is the wildcard cert created in acm.tf (covers *.<root_domain>)
   acm_certificate_arn = one(module.acm[*].acm_certificate_arn)
 
-  allowed_methods = ["GET", "HEAD", "OPTIONS"]
-  cached_methods  = ["GET", "HEAD"]
-  cookies_forward = "none"
+  allowed_methods = each.value.allowed_methods
+  cached_methods  = each.value.cached_methods
+  cookies_forward = each.value.cookies_forward
 
   # SPA fallback: a private S3 bucket returns 403 for unknown paths -> serve index.html
   enable_error_page   = true
   error_code          = 403
-  error_response_page = "/index.html"
+  error_response_page = "/${each.value.root_object}"
 }
 
 # 3) Bucket policy: allow ONLY this CloudFront distribution (OAC) to read the bucket

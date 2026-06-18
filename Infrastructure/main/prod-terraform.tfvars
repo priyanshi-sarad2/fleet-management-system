@@ -17,15 +17,15 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # cloudfront_s3_origins = {
 # }
-# CloudFront price classes (cheapest -> most expensive):
-#   PriceClass_100 = US, Canada, Europe (+ Israel)            <- CHEAPEST
-#   PriceClass_200 = PriceClass_100 + Asia (incl. India), Middle East, Africa
-#   PriceClass_All = all edge locations (adds South America, Australia/NZ) - most expensive
+
 cloudfront_s3_origins = {
   "fleetman-webapp" = {
-    domain      = "fleetman.priyanshiseniordevops.online"
-    root_object = "index.html"        # optional (defaults to "index.html")
-    price_class = "PriceClass_100"    # cheapest: US, Canada, Europe only
+    domain          = "fleetman.priyanshiseniordevops.online"
+    root_object     = "index.html"               # optional (defaults to "index.html")
+    price_class     = "PriceClass_100"           # US, Canada, Europe only (cheapest)
+    allowed_methods = ["GET", "HEAD", "OPTIONS"] # optional (defaults to these)
+    cached_methods  = ["GET", "HEAD"]            # optional (defaults to these)
+    cookies_forward = "none"                     # optional (defaults to "none")
   }
 }
 
