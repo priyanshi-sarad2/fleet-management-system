@@ -46,6 +46,9 @@ helm_charts = {
       { name = "serviceAccount.create", value = "false" },
       { name = "serviceAccount.name", value = "load-balancer-controller" },
     ]
+
+    # This chart needs the VPC ID -> helm.tf appends it dynamically from the cluster.
+    inject_vpc_id = true
   }
 }
 

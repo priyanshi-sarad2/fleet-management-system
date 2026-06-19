@@ -43,6 +43,9 @@ variable "helm_charts" {
       name  = string
       value = string
     })), [])
+    # Opt-in: when true, the cluster's VPC ID is appended to this chart's set values
+    # (discovered dynamically in helm.tf). Charts that don't need it just omit this.
+    inject_vpc_id = optional(bool, false)
   }))
   default = {}
 }

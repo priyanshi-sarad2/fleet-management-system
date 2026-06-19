@@ -4,13 +4,11 @@
 # Empty map -> nothing is installed.
 
 locals {
-  # The AWS Load Balancer Controller needs the VPC ID, but its pods can't reach EC2 IMDS
-  # to auto-discover it (node IMDS hop limit). Instead of hardcoding the VPC ID in tfvars,
-  # we pull it dynamically from the existing EKS cluster data source and append it to that
-  # chart's set values only.
-  alb_controller_release = "load-balancer-controller"
-
-  alb_controller_vpc_set = [
+  # VPC ID pulled dynamically from the existing EKS cluster data source (no hardcoding).
+  # Any chart that sets `inject_vpc_id = true` gets this appended to its set values.
+  # (Needed by the AWS Load Balancer Controller, whose pods can't reach EC2 IMDS to
+  # auto-discover the VPC. Other charts opt in only if they need it.)
+  vpc_id_set = [
     {
       name  = "vpcId"
       value = data.aws_eks_cluster.eks_cluster_data.vpc_config[0].vpc_id
@@ -28,11 +26,7 @@ module "helm_charts" {
   helm_chart_version = each.value.chart_version
   helm_namespace     = each.value.namespace
 
-  # `set` is a list of {name, value} objects from tfvars. For the ALB controller we
-  # concat the dynamically-discovered VPC ID onto it; all other charts use tfvars as-is.
-  helm_set = (
-    each.key == local.alb_controller_release
-    ? concat(each.value.set, local.alb_controller_vpc_set)
-    : each.value.set
-  )
+  # `set` is a list of {name, value} objects from tfvars. Charts that request it
+  # (inject_vpc_id = true) also get the dynamically-discovered VPC ID appended.
+  helm_set = each.value.inject_vpc_id ? concat(each.value.set, local.vpc_id_set) : each.value.set
 }
