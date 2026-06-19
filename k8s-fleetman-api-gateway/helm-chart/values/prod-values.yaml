@@ -18,13 +18,14 @@ service:
 
 # ALB Ingress (public entry point). Provisioned by the AWS Load Balancer Controller.
 ingress:
-  enabled: false                 # set true to expose the gateway via ALB
+  enabled: true                  # set true to expose the gateway via ALB
   className: alb
-  host: ""                       # e.g. "api.priyanshiseniordevops.online" (per client/env)
+  host: "fleetman-alb.priyanshiseniordevops.online"
   groupName: fleetman            # IngressGroup -> all apps/clients with this name share ONE ALB
   scheme: internet-facing
   targetType: ip
-  certificateArn: ""             # ACM cert ARN (from the Terraform ACM module). Empty -> HTTP only.
+  # Wildcard ACM cert (*.priyanshiseniordevops.online), region us-east-1, status ISSUED.
+  certificateArn: "arn:aws:acm:us-east-1:176777036446:certificate/b0bead0c-849c-4c9e-8d49-ddfd3c16855c"
   sslRedirect: true              # redirect 80 -> 443 (only applies when certificateArn is set)
   healthcheckPath: /             # the gateway serves a 200 at "/"
   path: /
