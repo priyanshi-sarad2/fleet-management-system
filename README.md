@@ -1326,7 +1326,7 @@ It is **both a Single Page Application (SPA) and a static site** — these aren'
 
 A **Single Page Application** serves **one HTML file** (`index.html`) once, and from then on the **browser** runs the app and renders every screen using JavaScript. The server is no longer asked for new pages — only for data.
 
-![How a Single Page Application works](assets/spa-diagram.png)
+![How a Single Page Application works](docs/images/spa-diagram.png)
 
 ### The "app shell": one index.html
 
@@ -1454,7 +1454,7 @@ For this project we host the static SPA on **Amazon S3 + CloudFront** instead of
 
 A **CDN (Content Delivery Network)** is a worldwide network of caching servers called **edge locations**. Your files physically live in **one** place — the S3 bucket in a single AWS region (the **origin**). Without a CDN, a user on the other side of the world would have to fetch every file all the way from that one region, which is slow. CloudFront fixes this by **caching copies of your files at edge locations around the globe** and serving each user from the **edge nearest to them**.
 
-![How a CDN delivers the site](assets/cdn-diagram.png)
+![How a CDN delivers the site](docs/images/cdn-diagram.png)
 
 **How a request flows:**
 
