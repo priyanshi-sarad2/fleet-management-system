@@ -49,6 +49,8 @@ module "iam_role_for_service_accounts" {
     This is for the ready-made ESO policy.
   */
 
+  attach_load_balancer_controller_policy = var.attach_load_balancer_controller_policy
+
 
   attach_amazon_managed_service_prometheus_policy = var.attach_amazon_managed_service_prometheus_policy
   amazon_managed_service_prometheus_workspace_arns = var.amazon_managed_service_prometheus_workspace_arns
