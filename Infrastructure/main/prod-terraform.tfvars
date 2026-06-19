@@ -110,7 +110,16 @@ mq_allowed_ingress_ports = [61617]
 
 
 ########    Route 53 - Hosted Zone    ########
-zone_records = {}
+# TESTING: point the API gateway host at the ALB (created in the addons layer).
+# ALB DNS is hardcoded here for now instead of being looked up cross-layer.
+zone_records = {
+  "fleetman-api" = {
+    name    = "fleetman-api"
+    type    = "CNAME"
+    ttl     = 300
+    records = ["k8s-fleetman-44b663265b-2121884777.us-east-1.elb.amazonaws.com"]
+  }
+}
 
 
 ########    CloudFront - Fleetman Webapp    ########
