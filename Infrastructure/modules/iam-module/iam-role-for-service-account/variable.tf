@@ -62,3 +62,8 @@ variable "amazon_managed_service_prometheus_workspace_arns" {
   default     = []
 }
 
+variable "attach_load_balancer_controller_policy" {
+  description = "Attach the AWS Load Balancer Controller IAM policy to the role"
+  type        = bool
+  default     = false
+}

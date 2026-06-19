@@ -46,3 +46,9 @@ variable "helm_charts" {
   }))
   default = {}
 }
+
+variable "create_load_balancer_controller" {
+  description = "Whether to create the AWS Load Balancer Controller resources (IRSA role, service account, etc.)"
+  type        = bool
+  default     = false
+}
