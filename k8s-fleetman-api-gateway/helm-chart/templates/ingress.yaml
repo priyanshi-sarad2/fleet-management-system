@@ -1,0 +1,43 @@
+{{- if .Values.ingress.enabled }}
+# ALB Ingress for the API Gateway (public entry point).
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: {{ required "values.yaml: namespace is required" .Values.namespace | quote }}
+  name: {{ include "app.fullname" . }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: {{ default "internet-facing" .Values.ingress.scheme | quote }}
+    alb.ingress.kubernetes.io/target-type: {{ default "ip" .Values.ingress.targetType | quote }}
+    alb.ingress.kubernetes.io/group.name: {{ required "values.yaml: ingress.groupName is required" .Values.ingress.groupName | quote }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ default "/" .Values.ingress.healthcheckPath | quote }}
+    {{- if .Values.ingress.certificateArn }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn | quote }}
+    {{- if .Values.ingress.sslRedirect }}
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    {{- end }}
+    {{- else }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    {{- end }}
+    {{- with .Values.ingress.extraAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ default "alb" .Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          - path: {{ default "/" .Values.ingress.path }}
+            pathType: {{ default "Prefix" .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "app.fullname" . }}
+                port:
+                  number: {{ default 80 .Values.service.port }}
+      {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host | quote }}
+      {{- end }}
+{{- end }}
