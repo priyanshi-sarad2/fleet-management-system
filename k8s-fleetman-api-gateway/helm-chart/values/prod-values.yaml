@@ -20,7 +20,7 @@ service:
 ingress:
   enabled: true                  # set true to expose the gateway via ALB
   className: alb
-  host: "fleetman-alb.priyanshiseniordevops.online"
+  host: "fleetman-api.priyanshiseniordevops.online"
   groupName: fleetman            # IngressGroup -> all apps/clients with this name share ONE ALB
   scheme: internet-facing
   targetType: ip
