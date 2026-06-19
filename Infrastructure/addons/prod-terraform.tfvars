@@ -42,3 +42,9 @@ helm_charts = {
     ]
   }
 }
+
+# ALB Controller CRDs note:
+# Helm install installs CRDs automatically, but helm upgrade does not update them.
+# If you upgrade and need to refresh CRDs manually, run:
+# wget https://raw.githubusercontent.com/aws/eks-charts/master/stable/aws-load-balancer-controller/crds/crds.yaml
+# kubectl apply -f crds.yaml
