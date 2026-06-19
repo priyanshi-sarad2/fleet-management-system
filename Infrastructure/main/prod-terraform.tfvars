@@ -225,6 +225,10 @@ codepipeline = {
   "api-gateway"        = { deploy_on_eks = true }
   "position-simulator" = { deploy_on_eks = true }
   "position-tracker"   = { deploy_on_eks = true }
+  # "webapp" (deploy_on_eks = false) needs the webapp S3 bucket + CloudFront distribution
+  # (from cloudfront.tf), which are currently disabled until the account is verified for
+  # CloudFront. Re-add this entry once CloudFront is enabled.
+  # "webapp"           = { deploy_on_eks = false }
 }
 
 
