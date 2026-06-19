@@ -4,6 +4,7 @@ env          = "prod"
 
 
 create_external_secrets_operator = true
+create_load_balancer_controller = true
 
 # k8s_namespaces = []
 
@@ -36,6 +37,13 @@ helm_charts = {
     set = [
       { name = "clusterName", value = "fleetman-eks-cluster" },
       { name = "region", value = "us-east-1" },
+      # Set vpcId explicitly: the nodes' IMDS hop limit blocks pods from auto-discovering
+      # the VPC, so the controller crashes ("failed to get VPC ID ... ec2imds ... deadline exceeded").
+      { name = "vpcId", value = "vpc-04348fb4a969d0bdb" },
+      # Disable the Service mutating webhook (only needed for NLB-via-Service).
+      # We use ALB via Ingress, and this prevents the controller from intercepting/
+      # blocking Service creation cluster-wide if its pods are ever unavailable.
+      { name = "enableServiceMutatorWebhook", value = "false" },
       { name = "serviceAccount.create", value = "false" },
       { name = "serviceAccount.name", value = "load-balancer-controller" },
     ]
