@@ -643,6 +643,10 @@ By adding only this IP to the access list, the Atlas cluster can **only be reach
 
 ![MongoDB Atlas IP Access List — only the fleetman VPC NAT gateway Elastic IP is allowed](docs/images/mongodb-ip-access-list.png)
 
+**Connecting from your own machine (testing/admin):** the list above only allows the cluster's NAT IP, so your laptop can't connect by default. To connect from where you are now, open **Network Access → IP Access List** and click **"Add Current IP Address"** (highlighted above) — Atlas adds your current public IP to the allowlist.
+
+**Giving developers access:** to let developers connect to Atlas from their own machines, add their IPs to the same list. If your team uses an **office VPN**, just allowlist the **office/VPN egress IP** once — then anyone on the VPN can reach Atlas, without adding each developer's IP individually.
+
 ---
 
 # Deploying EKS cluster

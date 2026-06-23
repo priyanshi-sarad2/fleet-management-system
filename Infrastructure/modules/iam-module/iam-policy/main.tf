@@ -21,7 +21,9 @@ module "iam_policy" {
             "logs:GetLogEvents"
           ]
           Effect   = "Allow"
-          Resource = "arn:aws:logs:*:*:log-group:/ecs/${var.env}/api:*"
+          # Global for now so CodeBuild can write to /aws/codebuild/* log groups
+          # (the previous /ecs/... scope didn't cover CodeBuild's log group).
+          Resource = "*"
         }
       ] : [],
 
