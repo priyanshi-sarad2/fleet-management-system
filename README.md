@@ -200,7 +200,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 | Service | Why it's used |
 |---------|---------------|
-| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster the whole application is deployed on |
+| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster the backend services (API Gateway, Position Tracker, Position Simulator) are deployed on |
 | [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
 | [ECR](#ecr) | Stores the Docker images for our services |
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
