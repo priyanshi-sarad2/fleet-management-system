@@ -201,10 +201,11 @@ custom_oidc_thumbprints = []
 # node_group_desired_size   = 4
 # node_group_ebs_disk_size  = 20
 
-# Cheapest practical node type for this workload (free-tier micro can't run EKS:
-# ~4 pods/node + 1 GiB RAM is too small for the system pods + add-ons + 3 apps).
-# t3a.small = 2 vCPU / 2 GiB; 2 nodes fit CoreDNS + ESO + ALB controller + the 3 services.
-node_group_instance_types = ["t3a.small"]
+
+# Free-tier-eligible x86 instance (this account can only launch free-tier-eligible types).
+# c7i-flex.large = 2 vCPU / 4 GiB, x86 (matches our amd64 images) -> launches under the free plan.
+# 4 GiB/node fits the 3 JVM apps + CoreDNS + ESO + ALB controller; 2 nodes = 4 vCPU / 8 GiB.
+node_group_instance_types = ["c7i-flex.large"]
 node_group_min_size       = 2
 node_group_max_size       = 3
 node_group_desired_size   = 2
