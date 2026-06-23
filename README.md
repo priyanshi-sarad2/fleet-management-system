@@ -192,6 +192,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | Variables (`prod-terraform.tfvars`) | The setup is parametrized — **each layer has its own tfvars** holding the values for its Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
 | Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
 | Creation toggles | Every AWS resource is gated behind a boolean toggle in tfvars (e.g. `create_vpc`, `create_eks_cluster`, `create_ecr_repository`). A resource is created **only when its toggle is `true`**, so individual parts of the stack can be turned on or off without changing any code |
+| Fully automated (no manual steps) | Nothing is created by hand in the console or CLI — **everything is provisioned through Terraform**. This includes the addons layer: **Helm chart installation** (External Secrets Operator, AWS Load Balancer Controller), **Kubernetes namespace creation**, and **IRSA setup** (the IAM roles for service accounts *and* the service-account annotations that bind them) |
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
