@@ -186,9 +186,10 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 | Item | Detail |
 |------|--------|
-| Workspace | A separate Terraform workspace is used just for this infrastructure, keeping its state isolated from anything else |
-| Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. Here the state is stored remotely in an S3 bucket (`fleetman-tf-state`), encrypted, with versioning enabled, so it is safe, shareable, and recoverable |
-| Variables (`prod-terraform.tfvars`) | The setup is parametrized — this file holds the values for the Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
+| Layers | The Terraform is split into two layers, each applied independently: the **infra layer** (`Infrastructure/main` — VPC, EKS, ECR, MQ, etc.) and the **addons layer** (`Infrastructure/addons` — cluster add-ons like External Secrets Operator and the AWS Load Balancer Controller, which need the cluster to exist first). Each layer has its own state, tfvars, and workspace |
+| Workspace | Each layer uses its own Terraform workspace (both named `prod`), keeping their state isolated |
+| Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. State is stored remotely in a single S3 bucket (`fleetman-tf-state`), encrypted and versioned, but **each layer writes a separate state file** (a different `key`), so the layers never clash |
+| Variables (`prod-terraform.tfvars`) | The setup is parametrized — **each layer has its own tfvars** holding the values for its Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
 | Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, Prometheus, Grafana, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
