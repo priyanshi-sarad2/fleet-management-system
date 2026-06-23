@@ -208,7 +208,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
-| CodePipeline | CI/CD — builds the service images and deploys them to the cluster |
+| [CodePipeline](#cicd-with-codepipeline) | CI/CD — builds the service images and deploys them to the cluster |
 | ACM (public certificate) | Public TLS certificate for HTTPS, used by the load balancer and CloudFront |
 | Route 53 | DNS — hosts the domain's records (e.g. the API Gateway host pointing at the ALB) |
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
@@ -1321,6 +1321,139 @@ The ConfigMap is rendered by the **Helm chart** from the values file (the `confi
 For this project's sensitive values I use **AWS Secrets Manager**, since it's purpose-built for secrets and supports encryption, rotation, and auditing out of the box.
 
 ## Using AWS Secrets Manager for sensitive values
+
+---
+
+# CI/CD with CodePipeline
+
+The three backend services (API Gateway, Position Tracker, Position Simulator) run on the EKS
+cluster, and each one has its own **AWS CodePipeline** that takes a code change all the way to
+the cluster — **build the image, push it to ECR, and deploy it with Helm** — with no manual
+steps. Without this you'd have to log in to ECR, `docker build`, `docker push`, then run
+`helm upgrade` by hand for every change; the pipeline does all of that consistently and
+records every run.
+
+There is **one pipeline per service**, so a change to one service only rebuilds and redeploys
+that service:
+
+![The three CodePipeline pipelines — one per service — all succeeded](docs/images/codepipeline-pipelines.png)
+
+## The stages
+
+Each service's pipeline has three stages: **Source → Build → EKSDeploy**.
+
+![A single pipeline showing the Source, Build and EKSDeploy stages](docs/images/codepipeline-stages.png)
+
+**1. Source** — A **GitHub connection** (CodeStar Connection) watches the repository. When the
+pipeline runs it pulls the repo and saves it as the `source_output` artifact. Because this is a
+monorepo, that artifact contains **all** the services' folders.
+
+**2. Build** (CodeBuild, runs the service's `buildspec.yml`) — logs in to ECR, builds the
+Docker image, tags it, and pushes it. The tag is generated as
+`v<short-commit-sha>-<timestamp>` (e.g. `v844e1-12-41-26-06-23`) so every build is unique and
+traceable back to a commit. It then writes that tag into `image-tag.txt` and packages the files
+the deploy stage will need into the `build_output` artifact.
+
+**3. EKSDeploy** (CodeBuild, runs `eks-deployspec.yml`) — installs `kubectl` + Helm, points
+`kubectl` at the cluster (`aws eks update-kubeconfig`), reads the tag from `image-tag.txt`, and
+runs a single `helm upgrade --install` to deploy that exact image tag (this is the same Helm
+command described in [Deploying with Helm](#deploying-with-helm)).
+
+## How the monorepo is handled
+
+Everything lives in one repository, so the Source stage hands the **whole repo** to CodeBuild.
+CodeBuild does **not** guess which `buildspec.yml` to use — by default it looks for one at the
+artifact root, which doesn't exist here. So each CodeBuild project is told the **exact path** to
+the service's buildspec, derived automatically from the service name:
+
+```hcl
+# the build project points at the right service folder
+buildspec = "k8s-fleetman-${var.app}/buildspec.yml"   # e.g. k8s-fleetman-api-gateway/buildspec.yml
+```
+
+The build commands also `cd` into the service folder before `docker build`, and the artifacts
+are collected with `base-directory: k8s-fleetman-<service>` so the deploy files land at the root
+of `build_output` where the deploy stage expects them.
+
+## Base images come from ECR Public (not Docker Hub)
+
+The Dockerfiles pull their base images (`maven`, `eclipse-temurin`) from the **Amazon ECR
+Public** mirror rather than Docker Hub:
+
+```dockerfile
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-21 AS build
+FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-alpine
+```
+
+Docker Hub enforces **anonymous pull rate limits** by source IP, and CodeBuild runs on shared
+AWS IPs — so builds would intermittently fail at the `FROM` line with a rate-limit / manifest
+error. ECR Public hosts the **same** Docker Official Images (identical tags), isn't throttled
+the same way, and is network-close to CodeBuild. (The original Docker Hub versions are kept as
+`Dockerfile-dev` for local development.)
+
+## Giving the pipeline access to the cluster
+
+The deploy stage runs as the pipeline's IAM role, but **IAM permissions alone don't grant
+access to the Kubernetes API**. Our cluster uses EKS **`authentication_mode = API`**, where
+access is controlled by **EKS Access Entries**. So the CodePipeline role is added as an access
+entry; without it `kubectl`/`helm` are rejected with *"the server has asked for the client to
+provide credentials"*.
+
+Because the app charts include an **`ExternalSecret`** (a Custom Resource from the External
+Secrets Operator), the entry is associated with **cluster-admin** — AWS's namespace-scoped
+managed policies map to Kubernetes' built-in `admin` role, which doesn't cover CRDs. The entry
+is built in Terraform and references the role created in the same layer:
+
+```hcl
+# Infrastructure/main/eks.tf
+codepipeline = {
+  principal_arn = module.iam-assumable-role-codepipeline.iam_role_arn
+  policy_associations = {
+    cluster_admin = {
+      policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+      access_scope = { type = "cluster" }
+    }
+  }
+}
+```
+
+## Artifacts and the artifacts bucket
+
+CodePipeline stages don't share a disk — each stage runs in its own fresh container. They pass
+work to the next stage through **artifacts**, which CodePipeline stores in a dedicated **S3
+bucket** (one bucket shared by all the pipelines). The two artifacts here are:
+
+| Artifact | Produced by | Contains | Used by |
+|---|---|---|---|
+| `source_output` | Source | the pulled repo | Build |
+| `build_output` | Build | `image-tag.txt`, `eks-deployspec.yml`, `helm-chart/` | EKSDeploy |
+
+This is why the build packages `image-tag.txt` and the Helm chart into `build_output` — the
+deploy stage's container never sees the original repo, only this artifact. The bucket is simply
+the hand-off point between stages.
+
+## Permissions the pipeline needs
+
+The pipeline's IAM role is granted exactly what the stages do:
+
+| Permission | Why |
+|---|---|
+| S3 (artifacts bucket) | read/write the `source_output` and `build_output` artifacts between stages |
+| ECR | log in, push the built image, and let the cluster pull it |
+| CloudWatch Logs | CodeBuild streams each build/deploy's logs to CloudWatch so runs are debuggable |
+| EKS (`DescribeCluster`) | so `aws eks update-kubeconfig` can configure access in the deploy stage |
+| CodeStar Connection | so the Source stage can pull from GitHub |
+| IAM (PassRole) | so CodePipeline can hand the CodeBuild projects their service role |
+
+CloudWatch Logs access in particular is what makes the build output (every command and its
+result) visible in the console — without it CodeBuild fails up front because it can't create its
+log stream.
+
+## Running the pipeline
+
+A pipeline runs automatically on a new commit, or you can start it manually with the
+**Release change** button in the CodePipeline console (top-right in the screenshots above). It
+re-pulls the latest commit from the source branch and runs Source → Build → EKSDeploy.
 
 ---
 
