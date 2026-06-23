@@ -207,7 +207,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | ACM | Provisions/manages the TLS certificate for HTTPS (used by the load balancer and CloudFront) |
-| Load Balancer | Part of the Load Balancer Controller — exposes the webapp (and any other service we want to expose) |
+| Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | CloudFront | CDN in front of the main webapp |
 | CloudWatch | Stores and views logs |
 | WAF | Web Application Firewall to protect the application |
