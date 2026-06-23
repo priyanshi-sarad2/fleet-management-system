@@ -46,13 +46,13 @@ cloudfront_s3_origins = {}
 
 ########    Creation toggles (default: create nothing)    ########
 # Turn individual services on by setting the corresponding flag to true.
-create_vpc                            = false
+create_vpc                            = true
 create_ecr_repository                 = true
-create_amazon_mq                      = false
-create_eks_cluster                    = false
-create_route53_zone                   = false
-create_acm_certificate                = false
-create_codepipeline                   = false
+create_amazon_mq                      = true
+create_eks_cluster                    = true
+create_route53_zone                   = true
+create_acm_certificate                = true
+create_codepipeline                   = true
 create_secrets_manager                = true
 
 setup_eks_cluster_monitoring          = false

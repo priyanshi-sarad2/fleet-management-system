@@ -1,10 +1,19 @@
 # Bucket needs to be created in advance
 # This will store the terraform state for the project
 
-bucket  = "fleetman-terraform"
+
+# This is for another person account - 
+bucket  = "fleetman-terraform123"
 key     = "prod/terraform.tfstate"
 region  = "us-east-1"
 encrypt = true
+
+
+# This is for my account
+#bucket  = "fleetman-terraform"
+#key     = "prod/terraform.tfstate"
+#region  = "us-east-1"
+#encrypt = true
 
 # Bucket Configurations:
 # - Versioning: Enabled

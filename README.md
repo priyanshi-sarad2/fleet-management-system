@@ -20,9 +20,9 @@ The whole thing is built as a microservices architecture (instead of one big mon
 
 ```
 Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──>  MongoDB
+                                                      ▲
                                                       │
-                                                      ▼
-                          API Gateway  ──>  Webapp (browser map)
+                     Webapp (browser map)  ──>  API Gateway
 ```
 
 #### The 5 Microservices
