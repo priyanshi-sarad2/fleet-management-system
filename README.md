@@ -397,8 +397,7 @@ Go into the root module and export the profile. The AWS account ID is kept out o
 
 ```bash
 cd Infrastructure/main
-export AWS_PROFILE=fleetman-prod
-export TF_VAR_account_id=<your-aws-account-id>
+export AWS_PROFILE=fleetman-prod; export TF_VAR_account_id=<your-aws-account-id>
 ```
 
 Initialise Terraform with the backend config:
@@ -426,8 +425,7 @@ Once the cluster is up, deploy the **addons layer** the same way — it has its 
 
 ```bash
 cd ../addons
-export AWS_PROFILE=fleetman-prod
-export TF_VAR_account_id=<your-aws-account-id>
+export AWS_PROFILE=fleetman-prod; export TF_VAR_account_id=<your-aws-account-id>
 
 terraform init -backend-config=backends/prod-backend.tfbackend
 terraform workspace new fleetman-prod      # or: terraform workspace select fleetman-prod

@@ -206,9 +206,9 @@ custom_oidc_thumbprints = []
 # c7i-flex.large = 2 vCPU / 4 GiB, x86 (matches our amd64 images) -> launches under the free plan.
 # 4 GiB/node fits the 3 JVM apps + CoreDNS + ESO + ALB controller; 2 nodes = 4 vCPU / 8 GiB.
 node_group_instance_types = ["c7i-flex.large"]
-node_group_min_size       = 2
+node_group_min_size       = 3
 node_group_max_size       = 3
-node_group_desired_size   = 2
+node_group_desired_size   = 3
 node_group_ebs_disk_size  = 20
 
 # Attaching extra policies to the node IAM role so Fluent Bit / CloudWatch Agent on the EKS worker nodes
