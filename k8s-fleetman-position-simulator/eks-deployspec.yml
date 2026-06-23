@@ -6,7 +6,10 @@ phases:
       - echo "Installing kubectl + helm..."
       - curl -sSL -o kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       - install -m 0755 kubectl /usr/local/bin/kubectl
-      - curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - HELM_VERSION="v4.0.4"
+      - curl -sSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz
+      - tar -xzf helm.tar.gz
+      - install -m 0755 linux-amd64/helm /usr/local/bin/helm
       - kubectl version --client
       - helm version
   pre_build:
