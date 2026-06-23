@@ -267,37 +267,61 @@ Terraform works on the idea of **desired state vs current state**:
 
 This gives us infrastructure that is reproducible, version-controlled, reviewable, and easy to tear down and recreate — and it avoids configuration drift, because the state file is the single source of truth for what Terraform manages.
 
+### Two layers: infra + addons
+
+The Terraform is split into **two independently-applied layers**, each with its own state file (a different `key` in the same S3 bucket), its own `prod-terraform.tfvars`, and its own `fleetman-prod` workspace:
+
+- **Infra layer (`Infrastructure/main`)** — the core AWS infrastructure: VPC, EKS cluster, ECR, Amazon MQ, Route 53, ACM, CodePipeline, etc.
+- **Addons layer (`Infrastructure/addons`)** — things that live *inside* the cluster and therefore need it to exist first: Helm releases (External Secrets Operator, AWS Load Balancer Controller), Kubernetes namespaces, and IRSA (IAM roles for service accounts + their service-account annotations).
+
+**Why split them?** The addons layer configures the **`kubernetes` and `helm` providers**, which need the cluster's API endpoint and auth — and those don't exist until the EKS cluster is created. Pointing those providers at a cluster created in the *same* apply is the classic chicken-and-egg problem (a provider's configuration can't depend on a resource built in the same run). Splitting into layers fixes that: apply **infra** first to build the cluster, then apply **addons** against the now-existing cluster. It also keeps the blast radius small — add-ons can be changed or destroyed without touching the core infrastructure.
+
+And it's all **100% Terraform — no manual `kubectl`, `helm`, or console steps**. The addons layer installs the Helm charts, creates the namespaces, and wires up IRSA (the IAM roles *and* the service-account annotations that bind them) entirely as code.
+
 ### Directory Structure
 
-The `Infrastructure/` directory is organised into a root module and reusable child modules (only the key files are shown):
+The `Infrastructure/` directory is organised into **two root modules (the layers)** and reusable child modules shared by both (only the key files are shown):
 
 ```
 Infrastructure/
-├── main/                            # Root module — run terraform from here
-│   ├── init.tf                      # Provider + version setup
+├── main/                            # INFRA layer (root module) — VPC, EKS, ECR, MQ, ...
+│   ├── init.tf                      # aws provider + version setup
 │   ├── backend.tf                   # Remote S3 backend declaration
 │   ├── variables.tf                 # Variable definitions
 │   ├── prod-terraform.tfvars        # Variable values for the prod environment
 │   ├── backends/
-│   │   └── prod-backend.tfbackend   # Backend config (state bucket, key, region)
+│   │   └── prod-backend.tfbackend   # Backend config (key: prod/terraform.tfstate)
 │   ├── vpc.tf                       # Calls the vpc module
 │   ├── eks.tf                       # Calls the eks module
 │   ├── ecr.tf                       # Calls the ecr module
 │   ├── cloudfront.tf
-│   ├── monitoring.tf
+│   ├── route53.tf
+│   ├── acm.tf
 │   └── output.tf
 │
-└── modules/                         # Reusable child modules
+├── addons/                          # ADDONS layer (root module) — runs AFTER the cluster exists
+│   ├── init.tf                      # aws + kubernetes + helm + kubectl providers
+│   ├── prod-terraform.tfvars        # Addons variable values
+│   ├── backends/
+│   │   └── prod-backend.tfbackend   # Separate state (key: prod/eks-addons.tfstate)
+│   ├── helm.tf                      # Helm releases (ESO, ALB controller)
+│   ├── k8s-ns.tf                    # Kubernetes namespaces
+│   ├── k8s-external-secrets-operator.tf
+│   └── load-balancer-controller.tf
+│
+└── modules/                         # Reusable child modules (shared by both layers)
     ├── vpc/
     ├── eks/
-    ├── eks-addons/
     ├── ecr/
     ├── cloudfront/
-    ├── iam/
-    └── monitoring/                  # each module: main.tf, variable.tf, output.tf
+    ├── static-cloudfront/
+    ├── acm/
+    ├── iam-module/
+    ├── helm/
+    └── k8s-modules/                 # namespaces, service accounts, kubectl manifests
 ```
 
-The root module (`main/`) wires everything together by calling the child modules under `modules/`, passing in the values from `prod-terraform.tfvars`.
+Each layer (`main/` and `addons/`) is a root module that wires everything together by calling the child modules under `modules/`, passing in the values from its own `prod-terraform.tfvars`.
 
 ### Root Module vs Child Modules
 
@@ -339,11 +363,18 @@ provider "aws" {
 
 ### Backend — prod-backend.tfbackend
 
-The S3 bucket that holds the state must be created beforehand.
+The S3 bucket that holds the state must be created beforehand. **Each layer has its own backend config with a different `key`**, so the two layers keep separate state files in the same bucket:
 
 ```hcl
+# Infrastructure/main/backends/prod-backend.tfbackend   (infra layer)
 bucket  = "fleetman-tf-state"
 key     = "prod/terraform.tfstate"
+region  = "us-east-1"
+encrypt = true
+
+# Infrastructure/addons/backends/prod-backend.tfbackend  (addons layer)
+bucket  = "fleetman-tf-state"
+key     = "prod/eks-addons.tfstate"   # different key -> separate state, same bucket
 region  = "us-east-1"
 encrypt = true
 ```
@@ -390,6 +421,20 @@ Review the plan, then apply:
 terraform plan -var-file=prod-terraform.tfvars
 terraform apply -var-file=prod-terraform.tfvars
 ```
+
+Once the cluster is up, deploy the **addons layer** the same way — it has its own init, workspace, and tfvars, and runs against the cluster the infra layer just created:
+
+```bash
+cd ../addons
+export AWS_PROFILE=fleetman-prod
+export TF_VAR_account_id=<your-aws-account-id>
+
+terraform init -backend-config=backends/prod-backend.tfbackend
+terraform workspace new fleetman-prod      # or: terraform workspace select fleetman-prod
+terraform apply -var-file=prod-terraform.tfvars
+```
+
+> **Order matters:** apply **infra → addons**. When tearing down, destroy **addons → infra** (the add-ons need the cluster alive to be removed cleanly).
 
 ---
 
