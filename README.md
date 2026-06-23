@@ -207,11 +207,12 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
-| Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
-| CloudFront | CDN in front of both the webapp and the API Gateway |
+| [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | CodePipeline | CI/CD — builds the service images and deploys them to the cluster |
 | ACM (public certificate) | Public TLS certificate for HTTPS, used by the load balancer and CloudFront |
 | Route 53 | DNS — hosts the domain's records (e.g. the API Gateway host pointing at the ALB) |
+| Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
+| CloudFront | CDN in front of both the webapp and the API Gateway |
 
 #### IAM
 
