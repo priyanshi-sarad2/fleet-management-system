@@ -181,6 +181,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | AWS CLI | To configure AWS credentials/profiles and talk to AWS |
 | kubectl | To interact with the Kubernetes (EKS) cluster |
 | Docker | To build and push the service images |
+| Helm | Optional — only if you want to **manually** deploy the apps to test. (Actual app deployment is handled by **CodePipeline**, and cluster add-ons are installed by **Terraform**.) |
 
 #### Terraform
 
