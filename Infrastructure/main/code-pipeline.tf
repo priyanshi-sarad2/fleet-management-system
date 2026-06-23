@@ -10,7 +10,7 @@ module "iam-custom-policy-codepipeline" {
   description              = "Custom policy for CodePipeline"
   attach_cloudwatch_policy = false
   attach_s3_bucket_policy  = true # so that codepipeline can upload artifacts to the bucket
-  attach_cloudfront_access = false
+  attach_cloudfront_access = true
   attach_iam_role          = true
   attach_ecr_policy        = true
   attach_eks_policy        = true

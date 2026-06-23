@@ -534,6 +534,18 @@ Looking at the lifecycle policy rule above:
 
 How a delete actually happens: each pipeline run pushes a new `v…` image. Once 5 builds exist, all 5 are kept; the moment the **6th** build is pushed, the repository has more than 5 images — so the **oldest** one is automatically expired, always leaving the 5 most recent builds.
 
+### Security: image scanning
+
+ECR can scan images for known vulnerabilities (CVEs). I've enabled **Basic scanning** with **scan-on-push** on the registry, so every image is automatically scanned for OS-package vulnerabilities the moment it's pushed.
+
+![ECR scanning configuration — Basic scanning with scan-on-push enabled for all repositories](docs/images/ecr-basic-scanning.png)
+
+- **Basic scanning is free** — it scans against the open-source CVE database at no cost, so there's no reason not to turn it on.
+- **Scan on push** means results are ready right after each CodePipeline build, surfacing vulnerable images immediately.
+- For deeper, *continuous* scanning of both OS and programming-language packages, AWS offers **Enhanced scanning** (Amazon Inspector) — but that's a **paid** service; Basic is enough for this project.
+
+**Recommendation: always enable Basic scanning** — it's free and an easy security win.
+
 ---
 
 # Deploying the Queue — Amazon MQ
