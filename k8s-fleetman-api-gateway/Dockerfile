@@ -1,5 +1,7 @@
 # ---------- Stage 1: build ----------
-FROM maven:3.9-eclipse-temurin-21 AS build
+# Use the ECR Public mirror of the Docker Official Image (same maven:3.9-eclipse-temurin-21)
+# to avoid Docker Hub anonymous pull rate limits in CodeBuild.
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy only the pom first and pre-download dependencies. This layer is cached and only re-runs when pom.xml changes — so normal code changes don't re-download every dependency again.
@@ -11,7 +13,8 @@ COPY src ./src
 RUN mvn -q -B -DskipTests package
 
 # ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:21-jre-alpine
+# ECR Public mirror of the Docker Official Image (same eclipse-temurin:21-jre-alpine).
+FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-alpine
 LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
 
 # Create a non-root user/group and an app dir it owns (security best practice)
