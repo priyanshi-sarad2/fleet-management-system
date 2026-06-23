@@ -190,7 +190,8 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | Workspace | Each layer uses its own Terraform workspace (both named `fleetman-prod`), keeping their state isolated |
 | Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. State is stored remotely in a single S3 bucket, encrypted and versioned, but **each layer writes a separate state file** (a different `key`), so the layers never clash |
 | Variables (`prod-terraform.tfvars`) | The setup is parametrized — **each layer has its own tfvars** holding the values for its Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
-| Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, Prometheus, Grafana, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
+| Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
+| Creation toggles | Every AWS resource is gated behind a boolean toggle in tfvars (e.g. `create_vpc`, `create_eks_cluster`, `create_ecr_repository`). A resource is created **only when its toggle is `true`**, so individual parts of the stack can be turned on or off without changing any code |
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
