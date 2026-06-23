@@ -1359,6 +1359,65 @@ the deploy stage will need into the `build_output` artifact.
 runs a single `helm upgrade --install` to deploy that exact image tag (this is the same Helm
 command described in [Deploying with Helm](#deploying-with-helm)).
 
+## The build and deploy specs
+
+The Build stage runs each service's `buildspec.yml`:
+
+```yaml
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region ${REGION} | docker login -u AWS --password-stdin ${ECR_LOGIN}
+  build:
+    commands:
+      - cd k8s-fleetman-api-gateway
+      - TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
+      - docker build -t ${ECR_REPOSITORY_URI}:${TAG} .
+  post_build:
+    commands:
+      - docker push ${ECR_REPOSITORY_URI}:${TAG}
+      - printf "%s" "${TAG}" > image-tag.txt
+artifacts:
+  files:
+    - image-tag.txt
+    - eks-deployspec.yml
+    - helm-chart/**/*
+  base-directory: k8s-fleetman-api-gateway
+```
+
+The EKSDeploy stage runs `eks-deployspec.yml`:
+
+```yaml
+version: 0.2
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - curl -sSL -o kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - install -m 0755 kubectl /usr/local/bin/kubectl
+      - HELM_VERSION="v4.0.4"
+      - curl -sSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz
+      - tar -xzf helm.tar.gz
+      - install -m 0755 linux-amd64/helm /usr/local/bin/helm
+  pre_build:
+    commands:
+      - test -f image-tag.txt
+      - IMAGE_TAG="$(cat image-tag.txt)"
+      - test -d "$HELM_CHART_PATH"
+      - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+      - kubectl -n "$K8S_NAMESPACE" get pods >/dev/null
+  build:
+    commands:
+      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m --force-conflicts
+      - kubectl -n "$K8S_NAMESPACE" rollout status deploy -l "app.kubernetes.io/instance=$HELM_RELEASE_NAME" --timeout=10m || true
+```
+
+The environment variables these specs use (`ECR_REPOSITORY_URI`, `ECR_LOGIN`, `REGION`,
+`AWS_REGION`, `EKS_CLUSTER_NAME`, `K8S_NAMESPACE`, `HELM_RELEASE_NAME`, `HELM_CHART_PATH`,
+`HELM_VALUES_FILE`) are injected by the CodeBuild projects, so the same specs work for every
+service.
+
 ## How the monorepo is handled
 
 Everything lives in one repository, so the Source stage hands the **whole repo** to CodeBuild.
