@@ -505,6 +505,21 @@ ECR (Elastic Container Registry) is AWS's private Docker image registry. After w
 
 We use **3 ECR repositories — one for each of the 3 services that run in the cluster** (Position Simulator, Position Tracker, API Gateway). Keeping a separate repository per service keeps their images cleanly isolated and independently versioned.
 
+### How images are built, tagged, and pushed
+
+Image creation and push are **fully automated by CodePipeline** — on a code change, the **CodeBuild build stage** builds the Docker image and pushes it to ECR (no manual `docker build`/`push`). Each build generates a unique tag in the build stage:
+
+```bash
+TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
+```
+
+So a tag looks like **`v9b0d4-04-12-26-06-23`**, made of:
+- a **`v`** prefix (so it's matched by the ECR lifecycle policy below),
+- the **first 5 characters of the commit SHA** that triggered the pipeline (`CODEBUILD_RESOLVED_SOURCE_VERSION`) — ties the image back to the exact source commit, and
+- a **timestamp** (`HH-MM-YY-MM-DD`) — keeps each build's tag unique and time-ordered.
+
+The tag is also written to `image-tag.txt` and passed to the deploy stage, so Helm deploys the exact image that was just built.
+
 ### Image retention
 
 Since this is a production setup, we don't want to keep every image forever — old images pile up and add storage cost. So each repository has a **lifecycle policy** that keeps only the most recent images and automatically deletes the older ones.
@@ -514,10 +529,10 @@ Since this is a production setup, we don't want to keep every image forever — 
 Looking at the lifecycle policy rule above:
 
 - We keep the **latest 5 images**. Five is a sensible production default — enough history to roll back a few versions if a deploy goes wrong, without letting images grow unbounded.
-- Only images whose tag starts with **`v`** are counted (releases are tagged `v1`, `v2`, `v3`, …). This is the `tagPrefixList = ["v"]` part of the rule.
+- Only images whose tag starts with **`v`** are counted — which is exactly how CodeBuild tags them (`v<commit>-<timestamp>`). This is the `tagPrefixList = ["v"]` part of the rule.
 - The rule type is "more than N" (`imageCountMoreThan`), so once a repository has **more than 5** such tagged images, the rule's action is to `expire` (delete) the **oldest** images beyond the newest 5.
 
-How a delete actually happens: as you push `v1`, `v2`, `v3`, `v4`, `v5`, all 5 are kept. The moment you push `v6`, the repository now has 6 images, which is more than 5 — so the oldest one (`v1`) is automatically expired, always leaving the 5 most recent versions.
+How a delete actually happens: each pipeline run pushes a new `v…` image. Once 5 builds exist, all 5 are kept; the moment the **6th** build is pushed, the repository has more than 5 images — so the **oldest** one is automatically expired, always leaving the 5 most recent builds.
 
 ---
 
