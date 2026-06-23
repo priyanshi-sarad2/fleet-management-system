@@ -23,7 +23,10 @@ artifacts:
     - image-tag.txt         # Image tag passed to the EKS deploy stage
     - eks-deployspec.yml    # EKS deploy stage buildspec (consumed from build_output)
     - helm-chart/**/*       # Helm chart needed by the EKS deploy stage
-  base-directory: .
+  # These files live inside the service folder, so collect relative to it.
+  # This makes them land at the ROOT of build_output, which is where the
+  # EKS deploy stage expects eks-deployspec.yml and helm-chart/.
+  base-directory: k8s-fleetman-api-gateway
 
 # For the EKS deploy stage, the Helm chart must be available in the artifact passed to the next stage.
 # The Helm chart already exists in this repo; adding `helm-chart/**/*` under `artifacts.files` makes CodeBuild include it in `build_output`.

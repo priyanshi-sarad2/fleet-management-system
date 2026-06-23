@@ -203,6 +203,11 @@ resource "aws_codebuild_project" "eks_build_project" {
 
   source {
     type = "CODEPIPELINE"
+    # Monorepo: the buildspec is not at the artifact root, it lives in the
+    # service's own folder (k8s-fleetman-<app>/buildspec.yml). Without this,
+    # CodeBuild defaults to ./buildspec.yml at the repo root and fails with
+    # YAML_FILE_ERROR: YAML file does not exist.
+    buildspec = "k8s-fleetman-${var.app}/buildspec.yml"
   }
 
   environment {
