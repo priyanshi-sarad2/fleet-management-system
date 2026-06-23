@@ -9,18 +9,21 @@
 locals {
   eks_managed_access_entries = merge(
     # CodePipeline/CodeBuild role: the EKS deploy stage (helm upgrade) runs as
-    # this role, so it needs Kubernetes access. Scoped to the app namespace
-    # only (least privilege). Switch the policy to AmazonEKSClusterAdminPolicy
-    # with access_scope.type = "cluster" if a deploy ever needs cluster-wide rights.
+    # this role. The app charts include an ExternalSecret (external-secrets.io CRD).
+    # AWS's namespace-scoped AmazonEKSAdminPolicy maps to the built-in `admin`
+    # role, which does NOT cover arbitrary CRDs, so Helm can't manage the
+    # ExternalSecret. Cluster-admin is the simplest policy that covers CRDs.
+    # (For stricter least-privilege, map the role to a kubernetes group via an
+    # access entry and bind a custom Role granting external-secrets.io in the
+    # app namespace instead.)
     var.create_codepipeline ? {
       codepipeline = {
         principal_arn = module.iam-assumable-role-codepipeline.iam_role_arn
         policy_associations = {
-          namespace_admin = {
-            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
+          cluster_admin = {
+            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
             access_scope = {
-              type       = "namespace"
-              namespaces = [var.project_k8s_namespace]
+              type = "cluster"
             }
           }
         }
