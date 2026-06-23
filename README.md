@@ -64,7 +64,7 @@ A queue is a very common part of a microservice architecture. It lets us send da
 
 - The Producer is the service sending messages to ActiveMQ — here, the Position Simulator.
 - The Consumer is the service receiving messages from the broker — here, the Position Tracker.
-- ActiveMQ is a message broker. When a message is sent in it's "enqueued"; when a consumer reads it, it's "dequeued".
+- ActiveMQ is a message broker. When a message is sent in, it's "enqueued"; when a consumer reads it, it's "dequeued".
 
 How the consumer actually receives messages:
 
