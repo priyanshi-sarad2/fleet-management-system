@@ -50,8 +50,8 @@ create_vpc                            = true
 create_ecr_repository                 = true
 create_amazon_mq                      = true
 create_eks_cluster                    = true
-create_route53_zone                   = true
-create_acm_certificate                = true
+create_route53_zone                   = false
+create_acm_certificate                = false
 create_codepipeline                   = true
 create_secrets_manager                = true
 
@@ -195,10 +195,19 @@ custom_oidc_thumbprints = []
 
 
 ##########    EKS Managed Node Group    ##########
-node_group_instance_types = ["t3a.medium"]
-node_group_min_size       = 4
-node_group_max_size       = 4
-node_group_desired_size   = 4
+# node_group_instance_types = ["t3a.medium"]
+# node_group_min_size       = 4
+# node_group_max_size       = 4
+# node_group_desired_size   = 4
+# node_group_ebs_disk_size  = 20
+
+# Cheapest practical node type for this workload (free-tier micro can't run EKS:
+# ~4 pods/node + 1 GiB RAM is too small for the system pods + add-ons + 3 apps).
+# t3a.small = 2 vCPU / 2 GiB; 2 nodes fit CoreDNS + ESO + ALB controller + the 3 services.
+node_group_instance_types = ["t3a.small"]
+node_group_min_size       = 2
+node_group_max_size       = 3
+node_group_desired_size   = 2
 node_group_ebs_disk_size  = 20
 
 # Attaching extra policies to the node IAM role so Fluent Bit / CloudWatch Agent on the EKS worker nodes
