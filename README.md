@@ -208,8 +208,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 | IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | CloudFront | CDN in front of both the webapp and the API Gateway |
-| CloudWatch | Stores and views logs |
-| WAF | Web Application Firewall to protect the application |
+| CodePipeline | CI/CD — builds the service images and deploys them to the cluster |
 | ACM (public certificate) | Public TLS certificate for HTTPS, used by the load balancer and CloudFront |
 | Route 53 | DNS — hosts the domain's records (e.g. the API Gateway host pointing at the ALB) |
 
