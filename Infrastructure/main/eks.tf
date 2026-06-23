@@ -1,5 +1,34 @@
 ####  EKS  ####
 
+# ---------------------------------------------------------------------------
+# EKS Access Entries that must reference resources created in THIS layer.
+# Their ARNs are only known after apply, so they can't be expressed in the
+# static prod-terraform.tfvars. Define them here and merge with the
+# tfvars-driven entries inside the module call below.
+# ---------------------------------------------------------------------------
+locals {
+  eks_managed_access_entries = merge(
+    # CodePipeline/CodeBuild role: the EKS deploy stage (helm upgrade) runs as
+    # this role, so it needs Kubernetes access. Scoped to the app namespace
+    # only (least privilege). Switch the policy to AmazonEKSClusterAdminPolicy
+    # with access_scope.type = "cluster" if a deploy ever needs cluster-wide rights.
+    var.create_codepipeline ? {
+      codepipeline = {
+        principal_arn = module.iam-assumable-role-codepipeline.iam_role_arn
+        policy_associations = {
+          namespace_admin = {
+            policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
+            access_scope = {
+              type       = "namespace"
+              namespaces = [var.project_k8s_namespace]
+            }
+          }
+        }
+      }
+    } : {},
+  )
+}
+
 module "eks" {
   source             = "../modules/eks"
   create_eks_cluster = var.create_eks_cluster
@@ -38,7 +67,10 @@ module "eks" {
   eks_access_entries = merge(
     var.eks_access_entry_account_root_admin != null ? { account_root_admin = var.eks_access_entry_account_root_admin } : {},
 
-    # Optional extra entries
+    # Entries that reference resources created in this layer (e.g. CodePipeline role)
+    local.eks_managed_access_entries,
+
+    # Optional extra static entries from tfvars (principals known ahead of time)
     var.eks_access_entries
   )
   /*
