@@ -230,10 +230,17 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 [EKS add-ons installed:](#eks-add-ons)
 
+**Managed EKS add-ons** (installed via the EKS API, from the `eks_addons` map in the infra layer):
+
 - CoreDNS — in-cluster DNS for service discovery
 - eks-pod-identity-agent — lets pods assume IAM roles (pod identity)
 - kube-proxy — manages network routing rules on each node
 - vpc-cni — assigns VPC IP addresses to pods
+
+**Helm-installed cluster add-ons** (installed by the addons layer via Terraform's Helm provider):
+
+- External Secrets Operator (ESO) — syncs secrets from AWS Secrets Manager into Kubernetes Secrets
+- AWS Load Balancer Controller — provisions an ALB from Kubernetes Ingress resources
 
 #### S3
 
