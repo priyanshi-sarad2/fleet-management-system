@@ -55,3 +55,9 @@ variable "create_load_balancer_controller" {
   type        = bool
   default     = false
 }
+
+variable "create_aws_cloudwatch_fluent_bit" {
+  description = "Whether to create the AWS for Fluent Bit resources (IRSA role, service account, etc.) that ship pod logs to CloudWatch Logs"
+  type        = bool
+  default     = false
+}

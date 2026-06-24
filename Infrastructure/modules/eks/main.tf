@@ -101,6 +101,11 @@ module "eks" {
   ###############    CloudWatch Log Group    ###############
   create_cloudwatch_log_group = var.eks_cluster_cloudwatch_log_group
 
+  # Control-plane log types EKS ships to CloudWatch (/aws/eks/<cluster>/cluster).
+  # Upstream default is ["audit","api","authenticator"]; set to [] to disable
+  # control-plane logging (we collect app pod logs via Fluent Bit instead).
+  cluster_enabled_log_types = var.eks_cluster_enabled_log_types
+
 
 
   ###############    Network    ###############

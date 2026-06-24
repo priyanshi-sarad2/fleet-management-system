@@ -21,6 +21,16 @@ module "iam_role_for_service_accounts" {
     - and only allow this Kubernetes namespace + ServiceAccount to assume the role
   */
 
+  create_policy      = var.create_policy
+  policy_name        = var.policy_name
+  policy_description = var.policy_description
+  # var.permissions is a list of statement objects; the upstream module expects a
+  # map keyed by statement name, so convert it here.
+  # Keys become the statement SID, which AWS requires to be alphanumeric only.
+  permissions = var.permissions == null ? null : {
+    for idx, stmt in var.permissions : "statement${idx}" => stmt
+  }
+
 
   attach_ebs_csi_policy = var.attach_ebs_csi_policy
   /*

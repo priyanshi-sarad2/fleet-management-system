@@ -21,12 +21,6 @@ module "external_secrets_service_account" {
 
 ### Creating IAM role for IRSA first ###
 
-# The IRSA trust policy needs the OIDC PROVIDER ARN (not the issuer URL), so look it up from the issuer URL:
-# we are passing the issuer URL to the data source to get the OIDC PROVIDER ARN
-data "aws_iam_openid_connect_provider" "eks_oidc_provider" {
-  url = data.aws_eks_cluster.eks_cluster_data.identity[0].oidc[0].issuer
-}
-
 module "external_secrets_irsa" {
   source = "../modules/iam-module/iam-role-for-service-account"
   create = var.create_external_secrets_operator

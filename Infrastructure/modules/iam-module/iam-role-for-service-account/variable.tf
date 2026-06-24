@@ -26,6 +26,30 @@ variable "oidc_providers" {
   type        = any
 }
 
+variable "create_policy" {
+  description = "Whether to create a custom IAM policy (from var.permissions) and attach it to the role"
+  type        = bool
+  default     = false
+}
+
+variable "policy_name" {
+  description = "Name of the custom IAM policy created when create_policy = true"
+  type        = string
+  default     = null
+}
+
+variable "policy_description" {
+  description = "Description of the custom IAM policy created when create_policy = true"
+  type        = string
+  default     = null
+}
+
+variable "permissions" {
+  description = "List of custom IAM policy statements (each: { actions, resources, optional sid/effect/... }). Converted to the upstream module's map form."
+  type        = any
+  default     = null
+}
+
 variable "attach_ebs_csi_policy" {
   description = "Attach EBS CSI IAM policy to the role"
   type        = bool

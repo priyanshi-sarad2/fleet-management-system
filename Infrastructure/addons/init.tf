@@ -41,7 +41,7 @@ data "aws_eks_cluster" "eks_cluster_data" {
 }
 
 provider "kubernetes" {
-  config_path = "~/.kube/fleetman-prod"
+  config_path    = "~/.kube/fleetman-prod"
   config_context = data.aws_eks_cluster.eks_cluster_data.arn
 }
 
