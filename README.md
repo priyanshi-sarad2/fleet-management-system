@@ -242,6 +242,7 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 - External Secrets Operator (ESO) — syncs secrets from AWS Secrets Manager into Kubernetes Secrets
 - AWS Load Balancer Controller — provisions an ALB from Kubernetes Ingress resources
+- [AWS for Fluent Bit](#pod-logs-with-fluent-bit) — ships application pod logs to CloudWatch Logs
 
 #### S3
 
@@ -1750,3 +1751,117 @@ When you ship a new version of the site, you tell CloudFront to **invalidate** t
 ### Provisioning & deploys
 
 The S3 bucket and CloudFront distribution are provisioned with **Terraform** (`Infrastructure/`), and new changes deploy automatically via **AWS CodePipeline** (Source → Build → S3 → CloudFront invalidate).
+
+---
+
+# Pod logs with Fluent Bit
+
+To let developers read the application logs without `kubectl` access to the cluster, we ship the pods' logs to **Amazon CloudWatch Logs** using **Fluent Bit**. Once there, anyone with CloudWatch access can browse and search the logs in the AWS console.
+
+**Fluent Bit** is a lightweight, fast log processor and forwarder (a CNCF project). It reads logs from a source, optionally filters/enriches them, and forwards them to a destination — here, from the nodes' container log files to CloudWatch.
+
+![How Fluent Bit collects pod logs and ships them to CloudWatch](docs/images/fluent-bit-flow.png)
+
+## How it grabs the logs
+
+The apps don't write log *files* themselves — they just print to **stdout/stderr**. On EKS the container runtime (**containerd**) captures that output and writes it to files on each **node's** filesystem:
+
+```
+/var/log/containers/<pod>_<namespace>_<container>-<id>.log
+```
+
+Fluent Bit runs as a **DaemonSet** — one Fluent Bit pod **per node** — and mounts the host's `/var/log`, so each instance can tail the log files of every container running on its node. It does **not** connect to the apps; it just reads these files.
+
+## The pipeline (input → filter → output)
+
+Every Fluent Bit instance runs a small 3-step pipeline, which is exactly what we configure through the Helm chart's values:
+
+**1. INPUT — tail only our app logs**
+
+By default Fluent Bit would tail **every** container on the node (kube-system, add-ons, everything). We restrict it to just the `fleetman-prod` namespace by narrowing the tail path. Because the namespace is the middle segment of the filename, this glob matches only our three apps:
+
+```
+input.path = /var/log/containers/*_fleetman-prod_*.log
+```
+
+**2. FILTER — add Kubernetes metadata**
+
+The built-in `kubernetes` filter looks at each log's source file and attaches metadata to every record — **namespace**, **pod name**, **container name**, and **labels** (e.g. `app=fleetman-position-tracker`). This is what lets us route each app's logs to its own log group later.
+
+**3. OUTPUT — send to CloudWatch Logs**
+
+The high-performance `cloudwatch_logs` output plugin forwards the enriched records to CloudWatch. Our configuration:
+
+| Setting | Value | Why |
+|---|---|---|
+| `cloudWatchLogs.enabled` | `true` | use the fast C plugin |
+| `cloudWatchLogs.region` | `us-east-1` | target region |
+| `cloudWatchLogs.autoCreateGroup` | `true` | create log groups automatically |
+| `cloudWatchLogs.logRetentionDays` | `7` | auto-expire logs to control cost |
+| `cloudWatchLogs.logGroupTemplate` | `/aws/eks/fleetman/$kubernetes['labels']['app']` | **one log group per app** |
+| `cloudWatchLogs.logGroupName` | `/aws/eks/fleetman/applications` | required fallback (used if a pod has no `app` label) |
+| `cloudWatchLogs.logStreamPrefix` | `fleetman-` | prefix for each log stream |
+
+Because the `logGroupTemplate` uses the `app` label, each service lands in its own log group:
+
+```
+/aws/eks/fleetman/fleetman-api-gateway
+/aws/eks/fleetman/fleetman-position-tracker
+/aws/eks/fleetman/fleetman-position-simulator
+```
+
+…with a **log stream per pod/container** inside each group (named with the `fleetman-` prefix). To read logs, open **CloudWatch → Log groups → `/aws/eks/fleetman/…`** in the console.
+
+## How it's deployed
+
+Fluent Bit is installed by the **addons layer** (Terraform's Helm provider), the same way as the other cluster add-ons. It's gated by `create_aws_cloudwatch_fluent_bit` and defined in `Infrastructure/addons/prod-terraform.tfvars`:
+
+```hcl
+"aws-cloudwatch-fluent-bit" = {
+  repository    = "https://aws.github.io/eks-charts"
+  chart_name    = "aws-for-fluent-bit"
+  chart_version = "0.2.0"
+  namespace     = "amazon-cloudwatch"
+  set = [
+    { name = "serviceAccount.create", value = "false" },
+    { name = "serviceAccount.name",   value = "aws-cloudwatch-fluent-bit" },
+    { name = "input.path",            value = "/var/log/containers/*_fleetman-prod_*.log" },
+    { name = "cloudWatchLogs.enabled",          value = "true" },
+    { name = "cloudWatchLogs.region",           value = "us-east-1" },
+    { name = "cloudWatchLogs.autoCreateGroup",  value = "true" },
+    { name = "cloudWatchLogs.logRetentionDays", value = "7" },
+    { name = "cloudWatchLogs.logGroupName",     value = "/aws/eks/fleetman/applications" },
+    { name = "cloudWatchLogs.logGroupTemplate", value = "/aws/eks/fleetman/$kubernetes['labels']['app']" },
+    { name = "cloudWatchLogs.logStreamPrefix",  value = "fleetman-" },
+  ]
+}
+```
+
+The chart deploys the Fluent Bit **DaemonSet** into the `amazon-cloudwatch` namespace.
+
+## Permissions (IRSA)
+
+To write to CloudWatch, Fluent Bit needs AWS permissions. We use **IRSA** (IAM Roles for Service Accounts): a dedicated IAM role is created and bound to Fluent Bit's Kubernetes service account, so only that pod gets the permissions — no node-wide credentials.
+
+In `Infrastructure/addons/aws-cloudwatch-fluent-bit.tf`:
+
+1. An **IAM role** (`fleetman-prod-aws-cloudwatch-fluent-bit-role`) is created with a custom policy granting only what's needed to write logs:
+
+```
+logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents,
+logs:DescribeLogGroups, logs:DescribeLogStreams, logs:GetLogEvents
+```
+
+2. Its **trust policy** is scoped to exactly one service account via the cluster's OIDC provider: `amazon-cloudwatch:aws-cloudwatch-fluent-bit`.
+
+3. A **service account** named `aws-cloudwatch-fluent-bit` is created in the `amazon-cloudwatch` namespace, annotated with the role ARN:
+
+```yaml
+eks.amazonaws.com/role-arn: <fluent-bit role ARN>
+```
+
+The Helm chart is told to **use this pre-created service account** (`serviceAccount.create=false`, `serviceAccount.name=aws-cloudwatch-fluent-bit`) so the pods inherit the role and can call CloudWatch.
+
+## Note on EKS control-plane logs
+
+This is separate from **EKS control-plane logging** (`api`, `audit`, `authenticator`), which EKS would ship to `/aws/eks/<cluster>/cluster`. We keep that **disabled** (`eks_cluster_enabled_log_types = []`) to avoid high-volume, costly audit logs — Fluent Bit covers the application logs we actually want.

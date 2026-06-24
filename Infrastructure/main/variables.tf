@@ -168,6 +168,12 @@ variable "create_eks_cluster_cloudwatch_log_group" {
   default     = false
 }
 
+variable "eks_cluster_enabled_log_types" {
+  description = "EKS control-plane log types to ship to CloudWatch. Empty list disables control-plane logging (app logs are collected via Fluent Bit)."
+  type        = list(string)
+  default     = []
+}
+
 variable "eks_endpoint_private_access" {
   description = "Whether the EKS API endpoint is reachable from inside the VPC"
   type        = bool

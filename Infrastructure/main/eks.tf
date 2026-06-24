@@ -95,6 +95,7 @@ module "eks" {
 
   ###############    CloudWatch Log Group    ###############
   eks_cluster_cloudwatch_log_group = var.create_eks_cluster_cloudwatch_log_group
+  eks_cluster_enabled_log_types    = var.eks_cluster_enabled_log_types
 
 
 

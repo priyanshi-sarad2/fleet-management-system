@@ -144,6 +144,12 @@ variable "eks_cluster_cloudwatch_log_group" {
   default     = true
 }
 
+variable "eks_cluster_enabled_log_types" {
+  description = "EKS control-plane log types to ship to CloudWatch (e.g. [\"audit\",\"api\",\"authenticator\"]). Empty list disables control-plane logging."
+  type        = list(string)
+  default     = ["audit", "api", "authenticator"]
+}
+
 variable "control_plane_sg_name" {
   description = "Optional name for the EKS cluster security group created by the module"
   type        = string
