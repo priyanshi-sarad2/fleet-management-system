@@ -27,9 +27,9 @@ variable "oidc_providers" {
 }
 
 variable "create_policy" {
-  description = "Whether to create a custom IAM policy (from var.permissions) and attach it to the role"
+  description = "Whether to create the IAM policy attached to the role. Must be true for the attach_*_policy options (e.g. external_secrets, load_balancer_controller) AND for custom var.permissions, since the upstream module folds them all into one policy gated by this flag. The upstream module still won't create an empty policy if there are no statements."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "policy_name" {
