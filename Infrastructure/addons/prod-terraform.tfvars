@@ -79,6 +79,10 @@ helm_charts = {
       { name = "cloudWatchLogs.logGroupName", value = "/aws/eks/fleetman/applications" },
       { name = "cloudWatchLogs.logGroupTemplate", value = "/aws/eks/fleetman/$kubernetes['labels']['app']" },
       { name = "cloudWatchLogs.logStreamPrefix", value = "fleetman-" },
+
+      # Send only the application message (the `log` field), not the whole JSON
+      # envelope. App/pod identity is already captured by the log group + stream.
+      { name = "cloudWatchLogs.logKey", value = "log" },
     ]
 
     # Fluent Bit does not need the VPC ID.

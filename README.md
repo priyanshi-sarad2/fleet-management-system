@@ -1801,6 +1801,7 @@ The high-performance `cloudwatch_logs` output plugin forwards the enriched recor
 | `cloudWatchLogs.logGroupTemplate` | `/aws/eks/fleetman/$kubernetes['labels']['app']` | **one log group per app** |
 | `cloudWatchLogs.logGroupName` | `/aws/eks/fleetman/applications` | required fallback (used if a pod has no `app` label) |
 | `cloudWatchLogs.logStreamPrefix` | `fleetman-` | prefix for each log stream |
+| `cloudWatchLogs.logKey` | `log` | send only the app message, not the full JSON envelope |
 
 Because the `logGroupTemplate` uses the `app` label, each service lands in its own log group:
 
@@ -1811,6 +1812,14 @@ Because the `logGroupTemplate` uses the `app` label, each service lands in its o
 ```
 
 …with a **log stream per pod/container** inside each group (named with the `fleetman-` prefix). To read logs, open **CloudWatch → Log groups → `/aws/eks/fleetman/…`** in the console.
+
+By default Fluent Bit's `kubernetes` filter wraps every line in a JSON envelope (the message plus all the pod metadata), which is noisy to read. Since the app and pod are already identified by the **log group** and **log stream**, we set `cloudWatchLogs.logKey = "log"` so each CloudWatch event contains just the **application message**, e.g.:
+
+```
+2026-06-24T16:59:38.060Z  INFO 1 --- [main] c.v.api.FleetmanApiGateway : Started FleetmanApiGateway in 5.546 seconds
+```
+
+(If you'd rather keep the structured JSON for field-based queries in CloudWatch Logs Insights, simply drop the `logKey` setting.)
 
 ## How it's deployed
 
@@ -1833,6 +1842,7 @@ Fluent Bit is installed by the **addons layer** (Terraform's Helm provider), the
     { name = "cloudWatchLogs.logGroupName",     value = "/aws/eks/fleetman/applications" },
     { name = "cloudWatchLogs.logGroupTemplate", value = "/aws/eks/fleetman/$kubernetes['labels']['app']" },
     { name = "cloudWatchLogs.logStreamPrefix",  value = "fleetman-" },
+    { name = "cloudWatchLogs.logKey",           value = "log" },
   ]
 }
 ```
