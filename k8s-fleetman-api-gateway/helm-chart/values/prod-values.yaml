@@ -28,7 +28,7 @@ ingress:
   # CloudFront fronts the ALB over HTTPS using the fleetman-alb CNAME, whose name matches
   # this wildcard cert -> the ALB's 443 listener serves it cleanly (no SNI mismatch).
   certificateArn: "arn:aws:acm:us-east-1:958941188585:certificate/a0b3ab0c-70ca-402c-8ab4-6c0c532339df"
-  sslRedirect: false             # CloudFront connects on 443; keep 80 open, no forced redirect
+  sslRedirect: true
   healthcheckPath: /             # the gateway serves a 200 at "/"
   path: /
   pathType: Prefix
