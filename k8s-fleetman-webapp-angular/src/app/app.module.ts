@@ -18,10 +18,18 @@ import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 
 import { DOCUMENT } from '@angular/platform-browser';
 
+import { environment } from '../environments/environment';
+
 const websocketProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
 
+// If apiUrl is set (prod build), connect the WebSocket to the API gateway directly
+// (http->ws, https->wss). Otherwise fall back to the legacy same-origin "/api/updates".
+const stompUrl = environment.apiUrl
+     ? environment.apiUrl.replace(/^http/, 'ws') + "/updates"
+     : websocketProtocol + window.location.host + "/api/updates";
+
 const stompConfig: StompConfig = {
-     url: websocketProtocol + window.location.host + "/api/updates",
+     url: stompUrl,
      // TODO will reinstate when dev complete.
      headers: {
      },

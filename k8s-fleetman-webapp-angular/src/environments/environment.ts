@@ -4,5 +4,9 @@
 // The list of which env maps to which file can be found in `.angular-cli.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  // Base URL of the API gateway. Empty = same-origin relative calls (uses the
+  // legacy /api path, e.g. local dev behind a proxy). In prod it is set at build
+  // time from the API_URL env var (see buildspec.yml -> environment.prod.ts).
+  apiUrl: ''
 };

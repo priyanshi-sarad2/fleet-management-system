@@ -17,6 +17,15 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # cloudfront_s3_origins = {}
 
+# CloudFront in front of the API gateway's ALB (custom origin). The ALB DNS is
+# discovered via a data source (tags), so only the public domain is needed here.
+cloudfront_alb_origins = {
+  "fleetman-api" = {
+    domain                 = "fleetman-api.priyanshiseniordevops.online"
+    origin_protocol_policy = "https-only"
+  }
+}
+
 cloudfront_s3_origins = {
   "fleetman-webapp" = {
     domain            = "fleetman.priyanshiseniordevops.online"
@@ -215,6 +224,10 @@ codepipeline = {
     deploy_on_eks         = false
     cloudfront_origin_key = "fleetman-webapp"
     buildspec_path        = "k8s-fleetman-webapp-angular/buildspec.yml"
+    # Baked into the SPA at build time so it calls the API gateway directly.
+    build_env_vars = [
+      { name = "API_URL", value = "https://fleetman-api.priyanshiseniordevops.online" }
+    ]
   }
 }
 

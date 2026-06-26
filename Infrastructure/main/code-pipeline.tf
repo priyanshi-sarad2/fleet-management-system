@@ -103,6 +103,10 @@ module "code-pipeline" {
   build_compute_type = "BUILD_GENERAL1_SMALL"
   build_buildspec    = each.value.buildspec_path
 
+  # Build-time env vars (e.g. API_URL baked into the static SPA).
+  enable_env_vars = length(each.value.build_env_vars) > 0
+  env_vars        = each.value.build_env_vars
+
   # S3 bucket + CloudFront distribution for this webapp come from cloudfront.tf,
   # keyed by the cloudfront_origin_key. Null for EKS services.
   s3_bucket_name             = each.value.deploy_on_eks ? null : try(module.webapp_s3[each.value.cloudfront_origin_key].s3_bucket_id, null)

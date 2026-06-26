@@ -180,6 +180,19 @@ variable "acm_certificate_arn" {
   default     = null
 }
 
+variable "cloudfront_alb_origins" {
+  description = <<-EOT
+    CloudFront distributions with a custom (ALB) origin, keyed by app (e.g. "fleetman-api").
+    One distribution per entry, in front of the API gateway's ALB. Caching is disabled.
+  EOT
+  type = map(object({
+    domain                 = string                         # alias / public domain (e.g. fleetman-api.<root>)
+    origin_protocol_policy = optional(string, "https-only") # how CloudFront talks to the ALB
+    origin_path            = optional(string, "")
+  }))
+  default = {}
+}
+
 variable "eks_endpoint_private_access" {
   description = "Whether the EKS API endpoint is reachable from inside the VPC"
   type        = bool
@@ -581,6 +594,11 @@ variable "codepipeline" {
     # Non-EKS (static webapp) entries only:
     cloudfront_origin_key = optional(string) # key in var.cloudfront_s3_origins -> its S3 bucket + CloudFront distribution
     buildspec_path        = optional(string) # path to the build buildspec in the repo (e.g. k8s-fleetman-webapp-angular/buildspec.yml)
+    build_env_vars = optional(list(object({  # build-time env vars for the build stage (e.g. API_URL baked into the SPA)
+      name  = string
+      value = string
+      type  = optional(string, "PLAINTEXT")
+    })), [])
   }))
   default = {}
 }

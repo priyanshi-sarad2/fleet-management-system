@@ -8,6 +8,7 @@ import {Message} from '@stomp/stompjs';
 import {StompService} from '@stomp/ng2-stompjs';
 
 import {  LatLng } from 'leaflet';
+import { environment } from '../environments/environment';
 
 @Injectable()
 export class VehicleService  {
@@ -56,7 +57,10 @@ export class VehicleService  {
     else
     {
       // call API gateway, get the history for this vehicle.
-      this.http.get("/api/history/" + centerVehicle.name)
+      // environment.apiUrl is the API gateway base URL (set at build time);
+      // empty falls back to the legacy same-origin "/api" path.
+      const apiBase = environment.apiUrl || "/api";
+      this.http.get(apiBase + "/history/" + centerVehicle.name)
              .subscribe( data => this.centerVehicleHistory.next(data));
     }
   }

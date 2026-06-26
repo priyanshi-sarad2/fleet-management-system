@@ -1,3 +1,44 @@
+#### Cloudfront for apps with alb origin ####
+
+# The API gateway's ALB is created by the AWS Load Balancer Controller (Helm, in the
+# addons layer) from the Ingress, so it isn't a Terraform resource here. We look it up
+# by the tags the controller applies (group.name = "fleetman" -> ingress.k8s.aws/stack).
+# NOTE: requires the addons/Ingress to already exist, so apply this after the ALB is up.
+data "aws_lb" "api_alb" {
+  count = length(var.cloudfront_alb_origins) > 0 ? 1 : 0
+  tags = {
+    "ingress.k8s.aws/stack" = "fleetman"
+    "elbv2.k8s.aws/cluster" = "${var.project_name}-eks-cluster"
+  }
+}
+
+# CloudFront distribution per API entry (custom ALB origin, caching disabled).
+module "cloudfront_api" {
+  for_each = var.cloudfront_alb_origins
+  source   = "../modules/cloudfront"
+
+  project_name       = var.project_name
+  cloudfront_comment = "${var.project_name} ${each.key} API cloudfront distribution"
+  cloudfront_aliases = [each.value.domain]
+
+  # Origin = the controller-created ALB (looked up via the data source above).
+  origin_dns_name                   = one(data.aws_lb.api_alb[*].dns_name)
+  origin_path                       = each.value.origin_path
+  cloudfront_origin_protocol_policy = each.value.origin_protocol_policy
+
+  # API responses must not be cached.
+  min_ttl     = 0
+  default_ttl = 0
+  max_ttl     = 0
+
+  # Same wildcard cert as the static distributions (covers *.<root_domain>),
+  # or the tfvars override if provided.
+  acm_certificate_arn = var.acm_certificate_arn != null ? var.acm_certificate_arn : one(module.acm[*].acm_certificate_arn)
+}
+
+
+
+
 ########    Static webapp hosting   ########
 
 # 1) S3 bucket per webapp

@@ -39,6 +39,9 @@ configmap:
     SPRING_PROFILES_ACTIVE: "production-microservice"
     # Overrides position-tracker-url (the properties file points at the default namespace)
     POSITION_TRACKER_URL: "http://fleetman-position-tracker:8080"
+    # CORS: origin of the static webapp (served from CloudFront). Allows the
+    # browser to call this API cross-origin (REST + WebSocket). Comma-separated.
+    ALLOWED_ORIGINS: "https://fleetman.priyanshiseniordevops.online"
 
 
 # Optional: create a Kubernetes Secret via Helm (turn OFF if you use AWS Secrets Manager/CSI)
