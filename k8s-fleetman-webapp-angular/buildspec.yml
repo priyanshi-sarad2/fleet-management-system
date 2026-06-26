@@ -23,7 +23,9 @@ phases:
       # Bake the API gateway URL (passed as the API_URL CodeBuild env var) into the
       # production environment so the SPA calls the API directly (no nginx proxy).
       - echo "Injecting API_URL=$API_URL into environment.prod.ts"
-      - echo "export const environment = { production: true, apiUrl: '${API_URL}' };" > src/environments/environment.prod.ts
+      # Single-quoted YAML scalar so the colons in the JS object don't break YAML parsing.
+      # (Inner single quotes around ${API_URL} are doubled per YAML escaping rules.)
+      - 'echo "export const environment = { production: true, apiUrl: ''${API_URL}'' };" > src/environments/environment.prod.ts'
       - cat src/environments/environment.prod.ts
       - echo "Building Angular app (ng build --prod)..."
       - npm run build
