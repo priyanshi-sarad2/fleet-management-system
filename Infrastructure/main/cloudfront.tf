@@ -13,7 +13,7 @@ data "aws_lb" "api_alb" {
 }
 
 # CloudFront distribution per API entry (custom ALB origin, caching disabled).
-module "cloudfront_api" {
+module "cloudfront_alb_origin" {
   for_each = var.cloudfront_alb_origins
   source   = "../modules/cloudfront"
 

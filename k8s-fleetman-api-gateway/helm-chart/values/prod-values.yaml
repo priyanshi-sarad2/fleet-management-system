@@ -26,7 +26,7 @@ ingress:
   targetType: ip
   # Wildcard ACM cert (*.priyanshiseniordevops.online), region us-east-1, status ISSUED.
   certificateArn: "arn:aws:acm:us-east-1:176777036446:certificate/b0bead0c-849c-4c9e-8d49-ddfd3c16855c"
-  sslRedirect: true              # redirect 80 -> 443 (only applies when certificateArn is set)
+  sslRedirect: false             # OFF: CloudFront fronts the ALB over HTTP (http-only origin); a 80->443 redirect would break it
   healthcheckPath: /             # the gateway serves a 200 at "/"
   path: /
   pathType: Prefix

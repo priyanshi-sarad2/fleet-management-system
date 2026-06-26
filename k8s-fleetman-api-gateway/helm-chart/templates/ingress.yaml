@@ -14,9 +14,12 @@ metadata:
     alb.ingress.kubernetes.io/group.name: {{ required "values.yaml: ingress.groupName is required" .Values.ingress.groupName | quote }}
     alb.ingress.kubernetes.io/healthcheck-path: {{ default "/" .Values.ingress.healthcheckPath | quote }}
     {{- if .Values.ingress.certificateArn }}
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    # Listen on HTTP 80 (so CloudFront can reach the ALB over http-only) AND HTTPS 443.
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn | quote }}
     {{- if .Values.ingress.sslRedirect }}
+    # Leave OFF when CloudFront fronts the ALB with http-only origin, otherwise the
+    # ALB 301-redirects CloudFront's HTTP request and the API breaks.
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     {{- end }}
     {{- else }}

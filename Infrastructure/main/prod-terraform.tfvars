@@ -21,8 +21,10 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 # discovered via a data source (tags), so only the public domain is needed here.
 cloudfront_alb_origins = {
   "fleetman-api" = {
-    domain                 = "fleetman-api.priyanshiseniordevops.online"
-    origin_protocol_policy = "https-only"
+    domain = "fleetman-api.priyanshiseniordevops.online"
+    # TLS terminates at CloudFront; CloudFront talks to the ALB over HTTP (port 80).
+    # Avoids the origin-cert mismatch you'd hit with https-only to an ALB on *.elb.amazonaws.com.
+    origin_protocol_policy = "http-only"
   }
 }
 
