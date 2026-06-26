@@ -89,7 +89,7 @@ resource "aws_codepipeline" "codepipeline" {
   }
 
   dynamic "stage" {
-    for_each = var.enable_deploy_stage ? [1] : []
+    for_each = var.enable_deploy_s3_stage ? [1] : []
     content {
       name = "Deploy"
       action {
@@ -109,7 +109,7 @@ resource "aws_codepipeline" "codepipeline" {
   }
 
   dynamic "stage" {
-    for_each = var.enable_invalidate_stage ? [1] : []
+    for_each = var.enable_cloudfront_invalidate_stage ? [1] : []
     content {
       name = "Invalidate"
       action {
@@ -170,6 +170,9 @@ resource "aws_codebuild_project" "build_project" {
 
   source {
     type = "CODEPIPELINE"
+    # Monorepo: point at the app's buildspec (e.g. k8s-fleetman-webapp-angular/buildspec.yml).
+    # Null falls back to CodeBuild's default ./buildspec.yml at the artifact root.
+    buildspec = var.build_buildspec
   }
 
   environment {
@@ -295,7 +298,7 @@ resource "aws_codebuild_project" "eks_deploy_project" {
 
 #####      AWS Code Build Project  -> for Invalidate Cloudfront stage     ####
 resource "aws_codebuild_project" "invalidate_cloudfront" {
-  count        = var.enable_invalidate_stage ? 1 : 0
+  count        = var.enable_cloudfront_invalidate_stage ? 1 : 0
   name         = var.cloudfront_project_name
   service_role = var.iam_role_arn
 

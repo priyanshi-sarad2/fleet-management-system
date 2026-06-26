@@ -174,6 +174,12 @@ variable "eks_cluster_enabled_log_types" {
   default     = []
 }
 
+variable "acm_certificate_arn" {
+  description = "Optional ACM certificate ARN for CloudFront. If set (via tfvars), it overrides the wildcard cert created by the acm module; if null, the acm module's cert is used."
+  type        = string
+  default     = null
+}
+
 variable "eks_endpoint_private_access" {
   description = "Whether the EKS API endpoint is reachable from inside the VPC"
   type        = bool
@@ -572,6 +578,9 @@ variable "codepipeline" {
   EOT
   type = map(object({
     deploy_on_eks = bool
+    # Non-EKS (static webapp) entries only:
+    cloudfront_origin_key = optional(string) # key in var.cloudfront_s3_origins -> its S3 bucket + CloudFront distribution
+    buildspec_path        = optional(string) # path to the build buildspec in the repo (e.g. k8s-fleetman-webapp-angular/buildspec.yml)
   }))
   default = {}
 }

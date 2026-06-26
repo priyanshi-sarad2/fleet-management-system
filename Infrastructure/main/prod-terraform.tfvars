@@ -6,6 +6,8 @@ env          = "prod"
 # Root/apex domain for the Route53 hosted zone + ACM certificate
 root_domain = "priyanshiseniordevops.online"
 
+acm_certificate_arn = "arn:aws:acm:us-east-1:958941188585:certificate/a0b3ab0c-70ca-402c-8ab4-6c0c532339df"
+
 
 # Application services
 apps = ["api-gateway", "position-simulator", "position-tracker"]
@@ -13,34 +15,20 @@ apps = ["api-gateway", "position-simulator", "position-tracker"]
 # Apps that need a Secrets Manager secret for their sensitive env vars
 secrets_manager_apps = ["position-tracker", "position-simulator"]
 
-# account_id is provided via the TF_VAR_account_id environment variable
+# cloudfront_s3_origins = {}
 
-# CloudFront temporarily disabled: account must be verified for CloudFront first
-# (AccessDenied on CreateDistribution -> contact AWS Support). Re-enable the entry
-# below once the account is verified.
-cloudfront_s3_origins = {}
-
-# cloudfront_s3_origins = {
-#   "fleetman-webapp" = {
-#     domain          = "fleetman.priyanshiseniordevops.online"
-#     root_object     = "index.html"
-#     price_class     = "PriceClass_100"           # US, Canada, Europe only
-#     allowed_methods = ["GET", "HEAD", "OPTIONS"]
-#     cached_methods  = ["GET", "HEAD"]
-#     cookies_forward = "none"
-#     enable_error_page = true
-#     error_code        = 403
-#   }
-# }
-
-# cloudfront_alb_origins = {
-# }
-
-# cloudfront_alb_origins = {
-#   "fleetman-alb" = {
-#     domain = "fleetman-alb.priyanshiseniordevops.online"
-#   }
-# }
+cloudfront_s3_origins = {
+  "fleetman-webapp" = {
+    domain            = "fleetman.priyanshiseniordevops.online"
+    root_object       = "index.html"
+    price_class       = "PriceClass_100" # US, Canada, Europe only
+    allowed_methods   = ["GET", "HEAD", "OPTIONS"]
+    cached_methods    = ["GET", "HEAD"]
+    cookies_forward   = "none"
+    enable_error_page = true
+    error_code        = 403
+  }
+}
 
 
 
@@ -110,16 +98,7 @@ mq_allowed_ingress_ports = [61617]
 
 
 ########    Route 53 - Hosted Zone    ########
-# TESTING: point the API gateway host at the ALB (created in the addons layer).
-# ALB DNS is hardcoded here for now instead of being looked up cross-layer.
-zone_records = {
-  "fleetman-api" = {
-    name    = "fleetman-api"
-    type    = "CNAME"
-    ttl     = 300
-    records = ["k8s-fleetman-44b663265b-2121884777.us-east-1.elb.amazonaws.com"]
-  }
-}
+
 
 
 
@@ -214,18 +193,12 @@ node_group_max_size       = 3
 node_group_desired_size   = 3
 node_group_ebs_disk_size  = 20
 
-# Attaching extra policies to the node IAM role so Fluent Bit / CloudWatch Agent on the EKS worker nodes
-# can write container logs to CloudWatch Logs.
 
-# This AWS-managed policy can:
-# - create CloudWatch log groups and log streams
-# - put/upload log events
-# - describe existing log groups and streams
-# - set log retention policy
 node_group_iam_role_additional_policies = {
-  cloudwatch_agent = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-  ecr_read_only    = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  ecr_read_only = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
+
+# cloudwatch_agent = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 
 
 ########    AWS Code Pipeline    ########
@@ -238,10 +211,11 @@ codepipeline = {
   "api-gateway"        = { deploy_on_eks = true }
   "position-simulator" = { deploy_on_eks = true }
   "position-tracker"   = { deploy_on_eks = true }
-  # "webapp" (deploy_on_eks = false) needs the webapp S3 bucket + CloudFront distribution
-  # (from cloudfront.tf), which are currently disabled until the account is verified for
-  # CloudFront. Re-add this entry once CloudFront is enabled.
-  # "webapp"           = { deploy_on_eks = false }
+  "webapp" = {
+    deploy_on_eks         = false
+    cloudfront_origin_key = "fleetman-webapp"
+    buildspec_path        = "k8s-fleetman-webapp-angular/buildspec.yml"
+  }
 }
 
 

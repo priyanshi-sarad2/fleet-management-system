@@ -10,7 +10,8 @@ module "iam-custom-policy-codepipeline" {
   description                       = "Custom policy for CodePipeline"
   attach_cloudwatch_policy          = true # for codepipeline to write logs to CloudWatch
   attach_s3_bucket_policy           = true # so that codepipeline can upload artifacts to the bucket
-  attach_cloudfront_access          = false
+  attach_cloudfront_access          = true # webapp pipeline invalidates CloudFront after S3 deploy
+  cloudfront_distribution_arn       = "*"  # CreateInvalidation on any distribution (shared CI role)
   attach_iam_role                   = true
   attach_ecr_policy                 = true
   attach_eks_policy                 = true
@@ -86,13 +87,25 @@ module "code-pipeline" {
   enable_ecr_build_stage  = each.value.deploy_on_eks
   enable_eks_deploy_stage = each.value.deploy_on_eks
 
-  # these three will be created only if deploy_on_eks is false
-  enable_build_stage      = !each.value.deploy_on_eks
-  enable_deploy_stage     = !each.value.deploy_on_eks
-  enable_invalidate_stage = !each.value.deploy_on_eks
+  # these three will be created only if deploy_on_eks is false (static webapp path)
+  enable_build_stage                 = !each.value.deploy_on_eks
+  enable_deploy_s3_stage             = !each.value.deploy_on_eks
+  enable_cloudfront_invalidate_stage = !each.value.deploy_on_eks
 
-  ecr_login          = module.ecr["ecr-${each.key}"].ecr_login_endpoint
-  ecr_repository_uri = module.ecr["ecr-${each.key}"].ecr_repository_url
+  # ECR only exists for EKS-deployed services; webapp (deploy_on_eks=false) has none.
+  ecr_login          = try(module.ecr["ecr-${each.key}"].ecr_login_endpoint, null)
+  ecr_repository_uri = try(module.ecr["ecr-${each.key}"].ecr_repository_url, null)
+
+  # ---- Static webapp path (deploy_on_eks = false): build -> S3 -> CloudFront invalidate ----
+  build_project_name = "${var.project_name}-${each.key}-build-${var.env}"
+  build_compute_type = "BUILD_GENERAL1_SMALL"
+  build_buildspec    = each.value.buildspec_path
+
+  # S3 bucket + CloudFront distribution for this webapp come from cloudfront.tf,
+  # keyed by the cloudfront_origin_key. Null for EKS services.
+  s3_bucket_name             = each.value.deploy_on_eks ? null : try(module.webapp_s3[each.value.cloudfront_origin_key].s3_bucket_id, null)
+  cloudfront_project_name    = "${var.project_name}-${each.key}-cf-invalidate-${var.env}"
+  cloudfront_distribution_id = each.value.deploy_on_eks ? null : try(module.cloudfront_static[each.value.cloudfront_origin_key].cloudfront_distribution_id, null)
 
   codepipeline_artifacts_bucket = "${var.name}-codepipeline-artifacts-${var.env}"
 

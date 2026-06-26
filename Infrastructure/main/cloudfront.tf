@@ -29,8 +29,9 @@ module "cloudfront_static" {
   cloudfront_root_object    = each.value.root_object
   cloudfront_price_class    = each.value.price_class
 
-  # Cert is the wildcard cert created in acm.tf (covers *.<root_domain>)
-  acm_certificate_arn = one(module.acm[*].acm_certificate_arn)
+  # Use the ACM ARN from tfvars if provided; otherwise fall back to the
+  # wildcard cert created in acm.tf (covers *.<root_domain>).
+  acm_certificate_arn = var.acm_certificate_arn != null ? var.acm_certificate_arn : one(module.acm[*].acm_certificate_arn)
 
   allowed_methods = each.value.allowed_methods
   cached_methods  = each.value.cached_methods

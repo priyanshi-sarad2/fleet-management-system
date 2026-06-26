@@ -19,14 +19,16 @@ variable "enable_ecr_build_stage" {
   default = false
 }
 
-variable "enable_deploy_stage" {
-  type    = bool
-  default = false
+variable "enable_deploy_s3_stage" {
+  description = "Static webapp path: deploy the built artifact to S3"
+  type        = bool
+  default     = false
 }
 
-variable "enable_invalidate_stage" {
-  type    = bool
-  default = false
+variable "enable_cloudfront_invalidate_stage" {
+  description = "Static webapp path: invalidate the CloudFront distribution after S3 deploy"
+  type        = bool
+  default     = false
 }
 variable "enable_ecs_deploy_stage" {
   type    = bool
@@ -66,6 +68,11 @@ variable "s3_bucket_name" {
 }
 variable "build_project_name" {
   description = "Build project name"
+  type        = string
+  default     = null
+}
+variable "build_buildspec" {
+  description = "Path to the buildspec for the (non-EKS) build stage, relative to the source artifact root (e.g. k8s-fleetman-webapp-angular/buildspec.yml). Null = CodeBuild default (./buildspec.yml)."
   type        = string
   default     = null
 }
