@@ -24,13 +24,15 @@ ingress:
   groupName: fleetman            # IngressGroup -> all apps/clients with this name share ONE ALB
   scheme: internet-facing
   targetType: ip
-  # Wildcard ACM cert (*.priyanshiseniordevops.online), region us-east-1, status ISSUED.
-  certificateArn: "arn:aws:acm:us-east-1:176777036446:certificate/b0bead0c-849c-4c9e-8d49-ddfd3c16855c"
-  sslRedirect: false             # OFF: CloudFront fronts the ALB over HTTP (http-only origin); a 80->443 redirect would break it
+  # Wildcard ACM cert (*.priyanshiseniordevops.online) in the CURRENT account (958941188585).
+  # CloudFront fronts the ALB over HTTPS using the fleetman-alb CNAME, whose name matches
+  # this wildcard cert -> the ALB's 443 listener serves it cleanly (no SNI mismatch).
+  certificateArn: "arn:aws:acm:us-east-1:958941188585:certificate/a0b3ab0c-70ca-402c-8ab4-6c0c532339df"
+  sslRedirect: false             # CloudFront connects on 443; keep 80 open, no forced redirect
   healthcheckPath: /             # the gateway serves a 200 at "/"
   path: /
   pathType: Prefix
-  extraAnnotations: {}           # any extra alb.ingress.kubernetes.io/* annotations
+  extraAnnotations: {}
 
 configmap:
   create: true

@@ -180,6 +180,12 @@ variable "acm_certificate_arn" {
   default     = null
 }
 
+variable "load_balancer_domain" {
+  description = "Stable DNS name used as the CloudFront origin for the API. You create this as a CNAME (e.g. in Namecheap) pointing at the ALB's DNS name. Because it's under the root domain, the ALB's wildcard cert matches it, so CloudFront can use an https-only origin."
+  type        = string
+  default     = null
+}
+
 variable "cloudfront_alb_origins" {
   description = <<-EOT
     CloudFront distributions with a custom (ALB) origin, keyed by app (e.g. "fleetman-api").

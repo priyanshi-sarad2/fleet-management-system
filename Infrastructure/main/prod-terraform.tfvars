@@ -6,6 +6,8 @@ env          = "prod"
 # Root/apex domain for the Route53 hosted zone + ACM certificate
 root_domain = "priyanshiseniordevops.online"
 
+load_balancer_domain = "fleetman-alb.priyanshiseniordevops.online"
+
 acm_certificate_arn = "arn:aws:acm:us-east-1:958941188585:certificate/a0b3ab0c-70ca-402c-8ab4-6c0c532339df"
 
 
@@ -17,14 +19,14 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # cloudfront_s3_origins = {}
 
-# CloudFront in front of the API gateway's ALB (custom origin). The ALB DNS is
-# discovered via a data source (tags), so only the public domain is needed here.
+# CloudFront in front of the API gateway's ALB. Users hit `domain` (the alias);
+# CloudFront's origin is `load_balancer_domain` (a CNAME you create in Namecheap ->
+# the ALB DNS). https-only means CloudFront talks TLS to the ALB; because the origin
+# name is fleetman-alb.<root>, it matches the wildcard cert on the ALB (no mismatch).
 cloudfront_alb_origins = {
   "fleetman-api" = {
-    domain = "fleetman-api.priyanshiseniordevops.online"
-    # TLS terminates at CloudFront; CloudFront talks to the ALB over HTTP (port 80).
-    # Avoids the origin-cert mismatch you'd hit with https-only to an ALB on *.elb.amazonaws.com.
-    origin_protocol_policy = "http-only"
+    domain                 = "fleetman-api.priyanshiseniordevops.online"
+    origin_protocol_policy = "https-only"
   }
 }
 

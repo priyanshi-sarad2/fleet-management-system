@@ -1,18 +1,10 @@
 #### Cloudfront for apps with alb origin ####
 
-# The API gateway's ALB is created by the AWS Load Balancer Controller (Helm, in the
-# addons layer) from the Ingress, so it isn't a Terraform resource here. We look it up
-# by the tags the controller applies (group.name = "fleetman" -> ingress.k8s.aws/stack).
-# NOTE: requires the addons/Ingress to already exist, so apply this after the ALB is up.
-data "aws_lb" "api_alb" {
-  count = length(var.cloudfront_alb_origins) > 0 ? 1 : 0
-  tags = {
-    "ingress.k8s.aws/stack" = "fleetman"
-    "elbv2.k8s.aws/cluster" = "${var.project_name}-eks-cluster"
-  }
-}
-
 # CloudFront distribution per API entry (custom ALB origin, caching disabled).
+# Origin = var.load_balancer_domain, a CNAME (managed in Namecheap) that points at
+# the controller-created ALB's DNS name. Using this stable name (instead of the raw
+# *.elb.amazonaws.com) lets CloudFront use an https-only origin whose SNI matches
+# the ALB's wildcard cert.
 module "cloudfront_alb_origin" {
   for_each = var.cloudfront_alb_origins
   source   = "../modules/cloudfront"
@@ -21,8 +13,7 @@ module "cloudfront_alb_origin" {
   cloudfront_comment = "${var.project_name} ${each.key} API cloudfront distribution"
   cloudfront_aliases = [each.value.domain]
 
-  # Origin = the controller-created ALB (looked up via the data source above).
-  origin_dns_name                   = one(data.aws_lb.api_alb[*].dns_name)
+  origin_dns_name                   = var.load_balancer_domain
   origin_path                       = each.value.origin_path
   cloudfront_origin_protocol_policy = each.value.origin_protocol_policy
 
