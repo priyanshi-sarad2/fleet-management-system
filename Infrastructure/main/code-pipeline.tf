@@ -1,17 +1,19 @@
 ########       IAM ROLE        ########
 module "iam-custom-policy-codepipeline" {
-  source                            = "../modules/iam-module/iam-policy"
-  create_iam_policy                 = var.create_codepipeline
-  name                              = var.project_name
-  app                               = "iam-custom-policy"
-  env                               = var.env
-  region                            = var.region
-  iam_policy_name                   = "${var.project_name}-${var.env}-codepipeline-custom-policy"
-  description                       = "Custom policy for CodePipeline"
-  attach_cloudwatch_policy          = true # for codepipeline to write logs to CloudWatch
-  attach_s3_bucket_policy           = true # so that codepipeline can upload artifacts to the bucket
-  attach_cloudfront_access          = true # webapp pipeline invalidates CloudFront after S3 deploy
-  cloudfront_distribution_arn       = "*"  # CreateInvalidation on any distribution (shared CI role)
+  source                   = "../modules/iam-module/iam-policy"
+  create_iam_policy        = var.create_codepipeline
+  name                     = var.project_name
+  app                      = "iam-custom-policy"
+  env                      = var.env
+  region                   = var.region
+  iam_policy_name          = "${var.project_name}-${var.env}-codepipeline-custom-policy"
+  description              = "Custom policy for CodePipeline"
+  attach_cloudwatch_policy = true # for codepipeline to write logs to CloudWatch
+  attach_s3_bucket_policy  = true # so that codepipeline can upload artifacts to the bucket
+  # Allow CloudFront invalidation (webapp pipeline) only when distributions exist,
+  # scoped to those specific distributions (from cloudfront.tf) instead of "*".
+  attach_cloudfront_access          = length(module.cloudfront_static) > 0
+  cloudfront_distribution_arn       = [for m in module.cloudfront_static : m.cloudfront_distribution_arn]
   attach_iam_role                   = true
   attach_ecr_policy                 = true
   attach_eks_policy                 = true

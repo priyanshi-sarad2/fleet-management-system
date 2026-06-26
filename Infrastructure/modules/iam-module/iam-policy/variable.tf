@@ -87,6 +87,7 @@ variable "database_name" {
 #     default = []
 # }
 variable "cloudfront_distribution_arn" {
-  type    = string
-  default = null
+  description = "CloudFront distribution ARN(s) the role may invalidate. Accepts a single ARN (string) or a list of ARNs."
+  type        = any
+  default     = null
 }
