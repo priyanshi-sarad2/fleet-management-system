@@ -1,5 +1,18 @@
 ########     Cloudfront with Load Balancer origin     ########
 
+# AWS-managed policies used to enable WebSockets through CloudFront for the API.
+# - AllViewer: forwards ALL viewer headers (incl. Sec-WebSocket-Key/Version and
+#   Upgrade/Connection) + cookies + query strings to the origin. This is what lets
+#   the wss://.../updates handshake succeed (CloudFront otherwise strips these).
+# - CachingDisabled: min/default/max TTL = 0 (the API must never be cached).
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+data "aws_cloudfront_origin_request_policy" "all_viewer" {
+  name = "Managed-AllViewer"
+}
+
 resource "aws_cloudfront_distribution" "cloudfront_lb" {
   enabled         = true
   is_ipv6_enabled = true
@@ -23,23 +36,20 @@ resource "aws_cloudfront_distribution" "cloudfront_lb" {
     target_origin_id       = var.origin_dns_name
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    compress               = true
+    cached_methods         = ["GET", "HEAD"]
 
-    # Forward all headers, query strings and cookies (disables caching effectively)
-    forwarded_values {
-      query_string = true
+    # Compression MUST be off for WebSockets: CloudFront's automatic compression
+    # breaks the WebSocket upgrade (handshake returns HTTP 400). This is a dynamic
+    # API origin, so there is nothing worth compressing at the edge anyway.
+    compress = false
 
-      cookies {
-        forward = "all"
-      }
-
-      headers = ["*"]
-    }
-
-    min_ttl     = var.min_ttl
-    default_ttl = var.default_ttl
-    max_ttl     = var.max_ttl
+    # WebSocket support + no caching for the dynamic API. AllViewer forwards every
+    # viewer header (Sec-WebSocket-Key/Version, Upgrade, Connection, Host, ...) so
+    # the wss://.../updates handshake succeeds; CachingDisabled keeps TTLs at 0.
+    # (cache_policy_id / origin_request_policy_id are mutually exclusive with the
+    # legacy forwarded_values block, so that block is intentionally removed.)
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
   }
 
   price_class = "PriceClass_200"

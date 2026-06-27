@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
-import { icon, latLng, Layer, Marker, marker, tileLayer, Map, point, polyline } from 'leaflet';
+import { divIcon, latLng, Layer, Marker, marker, tileLayer, Map, point, polyline } from 'leaflet';
 
 import { VehicleService } from '../vehicle.service';
 import { Vehicle } from '../vehicle';
@@ -43,14 +43,16 @@ export class MapComponent implements OnInit {
        {
          let newMarker = marker([vehicle.lat,vehicle.lng] ,
                                  {
-                                   icon: icon( {
-                                                 iconSize: [ 25, 41 ],
-                                                 iconAnchor: [ 11, 41 ],
-                                                 iconUrl: 'assets/marker-icon.png',
-                                                 shadowUrl: 'assets/marker-shadow.png'
-                                               }),
+                                   // Render a Font Awesome truck glyph as the marker (Font Awesome is
+                                   // already loaded app-wide), instead of the default blue Leaflet pin.
+                                   icon: divIcon( {
+                                                    className: 'vehicle-marker',
+                                                    html: '<i class="fa fa-truck"></i>',
+                                                    iconSize: [ 30, 30 ],
+                                                    iconAnchor: [ 15, 15 ]
+                                                  }),
                                    title: vehicle.name
-                                 }).bindTooltip(vehicle.name, {permanent:true,  offset: point({x: 0, y: 0})});
+                                 }).bindTooltip(vehicle.name, {permanent:true, direction:'top', offset: point({x: 0, y: -12})});
          this.markers.push(newMarker);
        }
        else

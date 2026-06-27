@@ -1,0 +1,16 @@
+/* Vehicle map marker: a Font Awesome truck glyph instead of the default Leaflet pin.
+   A custom className keeps Leaflet from drawing its default white box, and the white
+   text-shadow gives the icon a halo so it stays visible over any map background. */
+.vehicle-marker {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-marker i {
+  font-size: 24px;
+  color: #1565c0;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
