@@ -15,7 +15,7 @@ module "route53" {
   # Allow the zone to be destroyed even if it still has records (handy for teardown)
   force_destroy = var.zone_force_destroy
 
-  tags    = {
+  tags = {
     Terraform = "True"
     Project   = var.project_name
     Service   = "route53"

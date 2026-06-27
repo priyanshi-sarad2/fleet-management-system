@@ -1,11 +1,11 @@
 ###  EKS Setup  ###
 
 module "eks" {
-  source      = "terraform-aws-modules/eks/aws"
-  version     = "21.23.0"
-  create      = var.create_eks_cluster
-  region      = var.eks_region
-  name        = var.eks_cluster_name
+  source  = "terraform-aws-modules/eks/aws"
+  version = "21.23.0"
+  create  = var.create_eks_cluster
+  region  = var.eks_region
+  name    = var.eks_cluster_name
 
   # EKS Auto Mode (compute_config) disabled for now
   compute_config = {
@@ -71,7 +71,7 @@ module "eks" {
    So, I need to give root user admin access to this EKS cluster via EKS Access Entry. I need to create an EKS Access Entry for it.
    */
 
-  
+
   endpoint_private_access = var.eks_endpoint_private_access
   /*
   Private API endpoint ON (access EKS API from inside VPC, e.g., via bastion/VPN/SSM)
@@ -79,7 +79,7 @@ module "eks" {
   for production, it is good to keep this private
   If only private endpoint is enabled - then we need to use bastion host to access the cluster
   */
-  
+
   endpoint_public_access = var.eks_endpoint_public_access
   /*
   To access cluster from outside VPC - I will need to enable public API endpoint
@@ -109,7 +109,7 @@ module "eks" {
 
 
   ###############    Network    ###############
-  vpc_id             = var.eks_vpc_id
+  vpc_id = var.eks_vpc_id
 
   # ip_family: chooses whether pods/services use IPv4 (common) or IPv6 addresses (must be decided at cluster creation)
   ip_family = var.eks_ip_family
@@ -121,7 +121,7 @@ module "eks" {
   control_plane_subnet_ids = var.eks_control_plane_subnet_ids
 
   # This is where EKS node group (EC2 instances and its ENIs) will be provisioned
-  subnet_ids               = var.eks_node_group_subnet_ids
+  subnet_ids = var.eks_node_group_subnet_ids
 
 
 
@@ -142,9 +142,9 @@ module "eks" {
   # This rule is not added by default
   security_group_additional_rules = var.eks_control_plane_sg_additional_rules
 
-  create_node_security_group          = true
-  node_security_group_name            = var.eks_node_group_sg_name
-  node_security_group_use_name_prefix = false
+  create_node_security_group           = true
+  node_security_group_name             = var.eks_node_group_sg_name
+  node_security_group_use_name_prefix  = false
   node_security_group_additional_rules = var.eks_node_group_sg_additional_rules
 
 
@@ -154,9 +154,9 @@ module "eks" {
 
   # IRSA (OIDC provider for service account -> IAM role)
   enable_irsa                     = var.enable_irsa
-  openid_connect_audiences         = var.openid_connect_audiences
-  include_oidc_root_ca_thumbprint  = var.include_oidc_root_ca_thumbprint
-  custom_oidc_thumbprints          = var.custom_oidc_thumbprints
+  openid_connect_audiences        = var.openid_connect_audiences
+  include_oidc_root_ca_thumbprint = var.include_oidc_root_ca_thumbprint
+  custom_oidc_thumbprints         = var.custom_oidc_thumbprints
 
 
 
@@ -167,7 +167,7 @@ module "eks" {
   iam_role_name            = var.eks_control_plane_iam_role_name
   iam_role_use_name_prefix = false
 
- 
+
 
 
   ###############    EKS Managed Node Groups    ###############

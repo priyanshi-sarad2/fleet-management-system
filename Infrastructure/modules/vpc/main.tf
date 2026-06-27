@@ -1,13 +1,13 @@
 ########     VPC     ########
 
 module "vpc" {
-  source      = "terraform-aws-modules/vpc/aws"
-  version     = "6.6.1"
-  create_vpc  = var.create_vpc
-  name        = var.name
-  cidr        = var.cidr
-  azs         = var.availability_zones
-  create_igw  = true
+  source     = "terraform-aws-modules/vpc/aws"
+  version    = "6.6.1"
+  create_vpc = var.create_vpc
+  name       = var.name
+  cidr       = var.cidr
+  azs        = var.availability_zones
+  create_igw = true
 
   # Public subnet and Public subnet Network ACL
   public_subnets               = var.public_subnets
@@ -40,7 +40,7 @@ module "vpc" {
   database_dedicated_network_acl     = var.enable_database_dedicated_network_acl
   database_inbound_acl_rules         = var.database_inbound_acl_rules
   database_outbound_acl_rules        = var.database_outbound_acl_rules
-  create_database_subnet_route_table = true 
+  create_database_subnet_route_table = true
   /* If true, seperate route table will be created for db subnets as well. If this is not true, by default it won't create any route table and uses same route table as private subnet which is wrong in our case because in our case I am giving private subnet outbound internet access using NAT Gateway, which will alter private subnet route tables.
   So, I want seperate route tables for db-subnet, so that their traffic can be handled differently and there is no outbound internet access given to db - unlesss ofcourse I want it
   */

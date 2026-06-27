@@ -25,7 +25,7 @@ module "ecr" {
   })
 
   tags = {
-    Terraform   = "true"
-    Project     = var.name
+    Terraform = "true"
+    Project   = var.name
   }
 }

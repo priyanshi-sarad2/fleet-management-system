@@ -19,10 +19,6 @@ secrets_manager_apps = ["position-tracker", "position-simulator"]
 
 # cloudfront_s3_origins = {}
 
-# CloudFront in front of the API gateway's ALB. Users hit `domain` (the alias);
-# CloudFront's origin is `load_balancer_domain` (a CNAME you create in Namecheap ->
-# the ALB DNS). https-only means CloudFront talks TLS to the ALB; because the origin
-# name is fleetman-alb.<root>, it matches the wildcard cert on the ALB (no mismatch).
 cloudfront_alb_origins = {
   "fleetman-api" = {
     domain                 = "fleetman-api.priyanshiseniordevops.online"
@@ -56,22 +52,30 @@ create_acm_certificate = false
 create_codepipeline    = true
 create_secrets_manager = true
 
-setup_eks_cluster_monitoring          = false
-create_aws_prometheus_adot_writer_ecr = false
-
 
 ########    VPC - Public and Private Subnets    ########
 availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d"]
 cidr               = "10.2.0.0/16"
 
 # Public Subnets  - we need it for load balancer (for exposing webapp) and NAT Gateway (for private subnet to access internet)
+# One public subnet per AZ. The internet-facing ALB is built from these subnets and can only
+# route to pods in AZs where it has a subnet. Our EKS nodes span all 4 AZs (one private subnet
+# each), so we must also have a public subnet in all 4 AZs - otherwise a pod scheduled in an AZ
+# the ALB doesn't cover shows as "Unused" -> 0 healthy targets -> 503.
+# The AWS Load Balancer Controller auto-discovers these untagged public subnets by reachability
+# (route to the Internet Gateway), so no kubernetes.io/role/elb tag is required.
+# Subnet order maps to availability_zones order: 1a, 1b, 1c, 1d.
 public_subnets = [
   "10.2.1.0/24",
-  "10.2.2.0/24"
+  "10.2.2.0/24",
+  "10.2.3.0/24",
+  "10.2.4.0/24"
 ]
 public_subnet_names = [
   "fleetman-prod-public-subnet-1",
-  "fleetman-prod-public-subnet-2"
+  "fleetman-prod-public-subnet-2",
+  "fleetman-prod-public-subnet-3",
+  "fleetman-prod-public-subnet-4"
 ]
 
 # EKS cluster will be deployed in private subnets for better security
@@ -124,11 +128,7 @@ eks_deletion_protection = false
 
 ##########    CloudWatch Log Group    ##########
 create_eks_cluster_cloudwatch_log_group = false
-
-# Disable EKS control-plane logging (api/audit/authenticator). These were filling
-# /aws/eks/fleetman-eks-cluster/cluster with high-volume streams. App pod logs are
-# collected via Fluent Bit instead. Set to e.g. ["audit"] to re-enable selectively.
-eks_cluster_enabled_log_types = []
+eks_cluster_enabled_log_types           = []
 
 
 ##########    Security Group    ##########
@@ -155,24 +155,6 @@ eks_node_group_sg_additional_rules = {
 
 ##########    Cluster Authentication    ##########
 eks_authentication_mode = "API"
-
-# Since the IAM user who created the cluster only has admin access to cluster
-# I am giving the root account full admin access to this cluster as well
-eks_access_entry_account_root_admin = {
-  principal_arn = "arn:aws:iam::176777036446:root"
-
-  # Remember that even though root account has access to entire AWS - but it will not automatically will have access to eks cluster
-
-  # Which is why I am creating access entry for it - and associating a cluster access policy to it
-  policy_associations = {
-    admin = {
-      policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-      access_scope = {
-        type = "cluster"
-      }
-    }
-  }
-}
 
 eks_endpoint_private_access      = true # for worker nodes to join
 eks_endpoint_public_access       = true # for me
@@ -211,8 +193,6 @@ node_group_iam_role_additional_policies = {
   ecr_read_only = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# cloudwatch_agent = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-
 
 ########    AWS Code Pipeline    ########
 project_k8s_namespace = "fleetman-prod"
@@ -228,33 +208,8 @@ codepipeline = {
     deploy_on_eks         = false
     cloudfront_origin_key = "fleetman-webapp"
     buildspec_path        = "k8s-fleetman-webapp-angular/buildspec.yml"
-    # Baked into the SPA at build time so it calls the API gateway directly.
     build_env_vars = [
       { name = "API_URL", value = "https://fleetman-api.priyanshiseniordevops.online" }
     ]
   }
 }
-
-
-
-
-
-
-#####################                   #####################
-#####################    Monitoring    #####################
-#####################                   #####################
-prometheus_retention_period_in_days               = 3
-prometheus_cloudwatch_log_group_retention_in_days = 3
-
-grafana_account_access_type      = "CURRENT_ACCOUNT"
-grafana_authentication_providers = ["AWS_SSO"]
-grafana_data_sources             = ["PROMETHEUS"]
-grafana_role_associations = {
-  ADMIN = {
-    user_ids = ["c428f4b8-a001-707f-aece-163d1d051831"]
-  }
-}
-grafana_network_access_control = {}
-associate_license              = false
-
-

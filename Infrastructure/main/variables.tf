@@ -258,12 +258,6 @@ variable "eks_access_entries" {
   default     = {}
 }
 
-variable "eks_access_entry_account_root_admin" {
-  description = "Static EKS access entry object for account root admin (kept in tfvars)"
-  type        = any
-  default     = null
-}
-
 ######## IRSA ########
 
 variable "enable_irsa" {

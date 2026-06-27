@@ -11,8 +11,8 @@ locals {
 
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "cloudfront-distribution-OAC" {
-  name                              = var.cloudfront_oac_name
-  description                       = var.cloudfront_oac_description
+  name        = var.cloudfront_oac_name
+  description = var.cloudfront_oac_description
 
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"

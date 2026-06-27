@@ -1,10 +1,10 @@
 module "iam_policy" {
-  source        = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version       = "6.2.3"
-  create        = var.create_iam_policy
-  name          = var.iam_policy_name
-  name_prefix   = null
-  description   = var.description
+  source      = "terraform-aws-modules/iam/aws//modules/iam-policy"
+  version     = "6.2.3"
+  create      = var.create_iam_policy
+  name        = var.iam_policy_name
+  name_prefix = null
+  description = var.description
 
   policy = jsonencode({
     Version = "2012-10-17"

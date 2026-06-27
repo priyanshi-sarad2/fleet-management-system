@@ -25,6 +25,6 @@ variable "iam_trust_policy_permissions" {
   description = "Optional custom trust policy permissions map (overrides iam_trusted_role_services when set)"
   # Pass-through type (statements can differ between Service trust vs IRSA/OIDC trust).
   # We intentionally keep this flexible and let the upstream IAM module validate structure.
-  type        = map(any)
-  default     = null
+  type    = map(any)
+  default = null
 }

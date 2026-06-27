@@ -42,16 +42,16 @@ module "iam_role_for_service_accounts" {
     for storage operations such as creating, attaching, detaching, deleting,
     and describing EBS volumes and snapshots for Kubernetes PVCs/PVs.
   */
-  
-  ebs_csi_kms_cmk_arns  = var.ebs_csi_kms_cmk_arns
+
+  ebs_csi_kms_cmk_arns = var.ebs_csi_kms_cmk_arns
   /*
     Only needed when EBS volumes use a customer-managed KMS key; grants the
     EBS CSI role permission to use those key ARNs for encrypted volume operations.
     If you are not using a customer-managed KMS key, you can leave this empty.
-  */ 
+  */
 
   # this is for ready-made ESO policy
-  attach_external_secrets_policy  = var.attach_external_secrets_policy
+  attach_external_secrets_policy = var.attach_external_secrets_policy
 
   external_secrets_secrets_manager_arns = var.external_secrets_secrets_manager_arns
   /*
@@ -62,7 +62,7 @@ module "iam_role_for_service_accounts" {
   attach_load_balancer_controller_policy = var.attach_load_balancer_controller_policy
 
 
-  attach_amazon_managed_service_prometheus_policy = var.attach_amazon_managed_service_prometheus_policy
+  attach_amazon_managed_service_prometheus_policy  = var.attach_amazon_managed_service_prometheus_policy
   amazon_managed_service_prometheus_workspace_arns = var.amazon_managed_service_prometheus_workspace_arns
   /*
     For ADOT or Prometheus running in EKS, this attaches the upstream AMP IAM

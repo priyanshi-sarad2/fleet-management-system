@@ -12,4 +12,4 @@ resource "kubernetes_manifest" "k8s-manifests" {
   }
 }
 
- # The namespace key is included ONLY when a namespace is provided. If var.k8s_manifests_namespace is null, the key is omitted entirely (required for cluster-scoped resources like ClusterSecretStore).
+# The namespace key is included ONLY when a namespace is provided. If var.k8s_manifests_namespace is null, the key is omitted entirely (required for cluster-scoped resources like ClusterSecretStore).

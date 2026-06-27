@@ -7,6 +7,26 @@
 # tfvars-driven entries inside the module call below.
 # ---------------------------------------------------------------------------
 locals {
+  # Account root admin access entry. This references var.account_id, and a .tfvars
+  # file may only contain literal values (no variable references), so the entry is
+  # built here instead of in prod-terraform.tfvars.
+  # Why: the IAM user who created the cluster has admin on the cluster, but the AWS
+  # account root does NOT automatically get EKS cluster access - so we grant it via
+  # this access entry + cluster-admin policy association.
+  eks_access_entry_account_root_admin = {
+    account_root_admin = {
+      principal_arn = "arn:aws:iam::${var.account_id}:root"
+      policy_associations = {
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+
   eks_managed_access_entries = merge(
     # CodePipeline/CodeBuild role: the EKS deploy stage (helm upgrade) runs as
     # this role. The app charts include an ExternalSecret (external-secrets.io CRD).
@@ -68,7 +88,8 @@ module "eks" {
   eks_authentication_mode = var.eks_authentication_mode
 
   eks_access_entries = merge(
-    var.eks_access_entry_account_root_admin != null ? { account_root_admin = var.eks_access_entry_account_root_admin } : {},
+    # Account root admin (built in locals because it references var.account_id)
+    local.eks_access_entry_account_root_admin,
 
     # Entries that reference resources created in this layer (e.g. CodePipeline role)
     local.eks_managed_access_entries,
