@@ -230,7 +230,7 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 
 | Service | Why it's used |
 |---------|---------------|
-| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster the backend services (API Gateway, Position Tracker, Position Simulator) are deployed on |
+| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
 | [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
 | [ECR](#ecr) | Stores the Docker images for our services |
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
@@ -243,13 +243,11 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | CloudFront | CDN in front of both the webapp and the API Gateway |
 
----
-
 #### IAM
 
 | User | Purpose |
 |------|---------|
-| devops | Used for infrastructure creation via Terraform |
+| devops | AWS profile for infrastructure creation — the `fleetman-prod` stack is provisioned from this user's credentials (via Terraform) |
 
 #### EKS
 
