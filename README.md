@@ -197,6 +197,8 @@ Beyond the tools above, this project depends on a few external accounts/services
 | ACM public certificate | You have to create a public ACM certificate for your root domain and `*.<root_domain>` in the `us-east-1` region, which is used by CloudFront |
 | MongoDB Atlas cluster + connection string | External datastore for the Position Tracker (`MONGODB_URI`) |
 
+---
+
 #### Terraform
 
 | Item | Detail |
@@ -206,8 +208,19 @@ Beyond the tools above, this project depends on a few external accounts/services
 | Backend (`backends/prod-backend.tfbackend`) | The backend is where Terraform keeps its state file — the record of every resource it has created and their current values. State is stored remotely in a single S3 bucket, encrypted and versioned, but **each layer writes a separate state file** (a different `key`), so the layers never clash |
 | Variables (`prod-terraform.tfvars`) | The setup is parametrized — **each layer has its own tfvars** holding the values for its Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
 | Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
-| Creation toggles | Every AWS resource is gated behind a boolean toggle in tfvars (e.g. `create_vpc`, `create_eks_cluster`, `create_ecr_repository`). A resource is created **only when its toggle is `true`**, so individual parts of the stack can be turned on or off without changing any code |
+| How resources are enabled | Resources are switched on in two ways (detailed in the table below): **boolean toggles** (`create_*`, e.g. `create_vpc`) create a resource when `true`, while **maps/lists** create **one resource per entry** (an empty map/list creates nothing). Either way, parts of the stack can be turned on or off without changing any code |
 | Fully automated (no manual steps) | Nothing is created by hand in the console or CLI — **everything is provisioned through Terraform**. This includes the addons layer: **Helm chart installation** (External Secrets Operator, AWS Load Balancer Controller), **Kubernetes namespace creation**, and **IRSA setup** (the IAM roles for service accounts *and* the service-account annotations that bind them) |
+
+**How resources are enabled**
+
+Two complementary mechanisms decide what gets created — nothing is provisioned just by the code being present:
+
+| Mechanism | Behaviour | Driven by (in `prod-terraform.tfvars`) |
+|-----------|-----------|----------------------------------------|
+| Boolean toggle (`create_*`) | Created only when the flag is `true` | `create_vpc`, `create_ecr_repository`, `create_amazon_mq`, `create_eks_cluster`, `create_route53_zone`, `create_acm_certificate`, `create_codepipeline`, `create_secrets_manager` |
+| Map / list (per entry) | One resource is created **per entry**; an empty map/list creates **nothing** | `cloudfront_alb_origins`, `cloudfront_s3_origins`, `apps` (→ ECR repos), `secrets_manager_apps` (→ secrets), `codepipeline` (→ pipelines) |
+
+A few map/list variables are **also gated by a toggle** — the list decides *which* instances, the toggle decides *whether* to create them at all: `apps` + `create_ecr_repository`, `secrets_manager_apps` + `create_secrets_manager`, and `codepipeline` + `create_codepipeline`. The two CloudFront maps (`cloudfront_alb_origins`, `cloudfront_s3_origins`) have **no toggle** — they are driven purely by the map, so an empty map means none are created.
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
