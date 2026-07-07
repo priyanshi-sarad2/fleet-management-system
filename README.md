@@ -173,9 +173,9 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 #### Prerequisites
 
-**Tools / CLIs**
+**Tools**
 
-| Tool / CLI | Why it's needed |
+| Tool | Why it's needed |
 |------|-----------------|
 | Git | To clone this repository |
 | Terraform | To provision the AWS infrastructure as code |
@@ -191,11 +191,11 @@ Beyond the tools above, this project depends on a few external accounts/services
 
 | Prerequisite | Why it's needed |
 |--------------|-----------------|
-| **AWS account + IAM credentials**, plus the `TF_VAR_account_id` env var | AWS CLI must be authenticated; the Terraform code reads the AWS account ID from `TF_VAR_account_id` (kept out of Git) |
-| **S3 state bucket (pre-created)** | The S3 backend requires the bucket to exist **before** `terraform init` (versioned + encrypted). Each layer writes a separate state `key` |
-| **A registered domain** | You need a domain to expose the webapp and API endpoints |
-| **ACM public certificate** | You have to create a public ACM certificate for your root domain and `*.<root_domain>` in the `us-east-1` region, which is used by CloudFront |
-| **MongoDB Atlas** cluster + connection string | External datastore for the Position Tracker (`MONGODB_URI`) |
+| AWS account + IAM credentials, plus the `TF_VAR_account_id` env var | AWS CLI must be authenticated; the Terraform code reads the AWS account ID from `TF_VAR_account_id` (kept out of Git) |
+| S3 state bucket (pre-created) | The S3 backend requires the bucket to exist **before** `terraform init` (versioned + encrypted). Each layer writes a separate state `key` |
+| A registered domain | You need a domain to expose the webapp and API endpoints |
+| ACM public certificate | You have to create a public ACM certificate for your root domain and `*.<root_domain>` in the `us-east-1` region, which is used by CloudFront |
+| MongoDB Atlas cluster + connection string | External datastore for the Position Tracker (`MONGODB_URI`) |
 
 #### Terraform
 
