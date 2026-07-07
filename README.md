@@ -27,13 +27,13 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
 
 #### The 5 Microservices
 
-| Service | Tech |
+| Service | Tech &amp; versions |
 |---------|------|
-| **Position Simulator** | Java / Spring Boot |
-| **Queue** | ActiveMQ |
-| **Position Tracker** | Spring Boot + MongoDB |
-| **API Gateway** | Spring Boot + Feign + Hystrix |
-| **Webapp** | Angular 6 + Leaflet + nginx |
+| **Position Simulator** | Java 21 · Spring Boot 3.5.11 (ActiveMQ starter) · Apache Commons Text 1.12 |
+| **Queue** | Amazon MQ — ActiveMQ 5.19 (mq.t3.micro) |
+| **Position Tracker** | Java 21 · Spring Boot 3.5.11 · Spring Data MongoDB → MongoDB Atlas |
+| **API Gateway** | Java 21 · Spring Boot 3.5.11 · Spring Cloud OpenFeign (Spring Cloud 2025.0.0) · Resilience4j 2.2.0 · WebSocket/STOMP |
+| **Webapp** | Angular 6.0.3 · Leaflet 1.3 · RxJS 6 — static SPA on Amazon S3 + CloudFront |
 
 1. The Position Simulator pretends to be the moving vehicles and keeps sending their positions to a queue.
 2. The Queue (ActiveMQ) holds those position messages so services stay decoupled.
@@ -44,8 +44,6 @@ Position Simulator  ──>  Queue (ActiveMQ)  ──>  Position Tracker  ──
 ---
 
 # How Each Part Works
-
-![Fleet Management System architecture — browser to nginx reverse proxy to API Gateway, with Position Simulator, ActiveMQ, and Position Tracker](docs/images/architecture.png)
 
 ## Position Simulator
 
@@ -108,7 +106,7 @@ How it works here:
 
 ## Webapp
 
-This is the user-facing part — a JavaScript single-page app built with Angular and served by an nginx web server.
+This is the user-facing part — a JavaScript single-page app built with Angular. In production it is compiled to static files and served from **Amazon S3 behind CloudFront** (no web-server pod).
 
 - It shows the vehicles moving live on a map (using Leaflet).
 - It lists the vehicles with details like name, last-seen time, and speed.
