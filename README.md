@@ -224,6 +224,8 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 
 <sub>**[more on terraform →](#using-terraform-for-infra-creation)**</sub>
 
+---
+
 #### AWS and Other Services
 
 | Service | Why it's used |
@@ -240,6 +242,8 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | Route 53 | DNS — hosts the domain's records (e.g. the API Gateway host pointing at the ALB) |
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | CloudFront | CDN in front of both the webapp and the API Gateway |
+
+---
 
 #### IAM
 
