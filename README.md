@@ -175,11 +175,29 @@ All of the AWS infrastructure for this project is provisioned with Terraform. Th
 
 | Tool | Why it's needed |
 |------|-----------------|
+| Git | To clone this repository |
 | Terraform | To provision the AWS infrastructure as code |
-| AWS CLI | To configure AWS credentials/profiles and talk to AWS |
+| AWS CLI | To configure AWS credentials/profiles and talk to AWS (also used by `kubectl` to obtain EKS auth tokens) |
 | kubectl | To interact with the Kubernetes (EKS) cluster |
-| Docker | To build and push the service images |
+| Docker | Optional (local only) — to build/push service images by hand. CI builds them in **CodeBuild** |
 | Helm | Optional — only if you want to **manually** deploy the apps to test. (Actual app deployment is handled by **CodePipeline**, and cluster add-ons are installed by **Terraform**.) |
+| Java 21 + Maven / Node.js | Optional (local only) — to build or run the microservices or the Angular webapp locally |
+
+#### Accounts & one-time setup
+
+Beyond the tools above, this project depends on a few external accounts/services and one-time bootstrap steps:
+
+| Prerequisite | Why it's needed |
+|--------------|-----------------|
+| **AWS account + IAM credentials**, plus the `TF_VAR_account_id` env var | AWS CLI must be authenticated; the Terraform code reads the AWS account ID from `TF_VAR_account_id` (kept out of Git) |
+| **S3 state bucket (pre-created)** | The S3 backend requires the bucket to exist **before** `terraform init` (versioned + encrypted). Each layer writes a separate state `key`; no DynamoDB lock table is used |
+| **A domain + DNS access** (e.g. Namecheap) | `create_route53_zone = false`, so DNS is managed externally — you create the `fleetman.*`, `fleetman-api.*`, and `fleetman-alb.*` records |
+| **ACM wildcard certificate** (`*.<root_domain>`, in `us-east-1`) | `create_acm_certificate = false` — tfvars points at an **existing**, validated cert ARN used by CloudFront and the ALB |
+| **MongoDB Atlas** cluster + connection string | External datastore for the Position Tracker (`MONGODB_URI`) |
+| **GitHub repo + authorized CodeStar connection** | CodePipeline sources from GitHub via an AWS CodeConnections (CodeStar) connection that needs a **one-time manual authorization** in the console (Terraform creates it in `PENDING`) |
+| **Populated Secrets Manager values** | Terraform creates the app secrets **empty**; you put the real values (ActiveMQ credentials, MongoDB URI) so the **External Secrets Operator** can sync them into the cluster |
+
+> **After the first apply:** once the AWS Load Balancer Controller creates the ALB, point the **`fleetman-alb`** DNS record at the ALB's hostname. Because the ALB's DNS name changes if the Ingress is recreated, automating this with **ExternalDNS** is recommended.
 
 #### Terraform
 
