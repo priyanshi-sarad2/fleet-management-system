@@ -1680,7 +1680,7 @@ Amazon S3 is object storage. This project uses **three private buckets**:
 - **Versioning.** Keeps every version of an object, so overwrites and deletes are recoverable (a delete just adds a *delete marker*). Essential for buckets holding important state. **Cost note:** each version is stored and billed as a separate object, so noncurrent (old) versions accumulate storage cost over time — pair versioning with a **lifecycle rule** that expires old versions.
 - **CORS.** Browsers enforce a *same-origin policy*: JavaScript on a page loaded from one **origin** (scheme + domain) can't read the response from a request to a **different** origin unless that server opts in. **CORS** is that opt-in, set on the server being called. So you only need CORS **on an S3 bucket** if a web page calls the **bucket's URL directly** (via `fetch`/`XHR`) from a different domain. It's **not** needed here because CloudFront serves the webapp's files from our own domain (no cross-origin call to S3), and the state/artifacts buckets are backend-only (accessed server-side by Terraform/CodePipeline — CORS is a browser-only concept). *In this project CORS actually applies to the **api-gateway** (`ALLOWED_ORIGINS`), since the browser calls the API cross-origin — never S3 directly.*
 
-## Terraform state bucket — `fleetman-terraform`
+### Terraform state bucket — `fleetman-terraform`
 
 Holds the Terraform state (the record of everything Terraform manages). It must exist **before** `terraform init`, so it's created by hand. What it needs for production:
 
@@ -1696,11 +1696,11 @@ Holds the Terraform state (the record of everything Terraform manages). It must 
 - **Abort incomplete multipart uploads after 7 days.**
 - **Never expire current objects** — you always want the latest state.
 
-## CodePipeline artifacts bucket — `fleet-management-system-codepipeline-artifacts-prod`
+### CodePipeline artifacts bucket — `fleet-management-system-codepipeline-artifacts-prod`
 
 CodePipeline passes artifacts (source zip, build output) between stages through this bucket; Terraform creates it. Production settings:
 
-- **Versioning:** optional — artifacts are short-lived and reproducible, so it can stay off.
+- **Versioning: OFF** — artifacts are produced fresh on every run and never reused across builds, so there's nothing to recover. (Versioning is only *required* for an S3 **source** bucket, where CodePipeline tracks executions by object version — but our source is GitHub, and this is the artifact store, not a source.)
 - **Encryption: ON** — SSE-S3 (AES-256).
 - **Block Public Access: ON (all four).**
 - **ACLs disabled** — Object Ownership = Bucket owner enforced.
