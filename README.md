@@ -303,7 +303,7 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 
 **Helm-installed cluster add-ons** (installed by the addons layer via Terraform's Helm provider):
 
-- External Secrets Operator (ESO) — syncs secrets from AWS Secrets Manager into Kubernetes Secrets
+- [External Secrets Operator (ESO)](#handling-environment-variables) — syncs secrets from AWS Secrets Manager into Kubernetes Secrets
 - [AWS Load Balancer Controller](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront) — provisions an ALB from Kubernetes Ingress resources
 - [AWS for Fluent Bit](#pod-logs-with-fluent-bit) — ships application pod logs to CloudWatch Logs
 
@@ -1491,6 +1491,118 @@ The ConfigMap is rendered by the **Helm chart** from the values file (the `confi
 For this project's sensitive values I use **AWS Secrets Manager**, since it's purpose-built for secrets and supports encryption, rotation, and auditing out of the box.
 
 ## Using AWS Secrets Manager for sensitive values
+
+Secrets Manager holds the values, but the pod needs them **inside the cluster as environment variables**. Copying them in by hand — or committing a Kubernetes Secret — would defeat the point. The bridge is the **External Secrets Operator (ESO)**: it lets the app consume an ordinary Kubernetes Secret while the **single source of truth stays in AWS Secrets Manager**, and nothing sensitive ever touches Git or Terraform state.
+
+### What ESO is
+
+The **External Secrets Operator** is a Kubernetes operator that extends the cluster with two Custom Resources:
+
+- a **`SecretStore` / `ClusterSecretStore`** — *where* secrets live and *how* to authenticate (here: AWS Secrets Manager, via IRSA), and
+- an **`ExternalSecret`** — *which* secret to fetch and *what* Kubernetes Secret to create from it.
+
+Its controller **watches `ExternalSecret` objects**, fetches the values from the external provider using the store's credentials, **creates a native Kubernetes `Secret`** from them, and **keeps it in sync** if the source changes. So your apps consume a normal Kubernetes Secret (via `envFrom`), but you never write the secret into a manifest.
+
+![How ESO syncs a Secrets Manager secret into a Kubernetes Secret consumed by the pod](docs/images/eso-flow.png)
+
+### How we deployed ESO
+
+ESO is a **Helm-installed cluster add-on** in the addons layer (`Infrastructure/addons`) — like the Load Balancer Controller, it needs the cluster (and its OIDC provider) to already exist:
+
+- **Chart:** `external-secrets` v0.20.4 from `https://charts.external-secrets.io`, into its own `external-secrets-operator` namespace, with `installCRDs=true` so the `ExternalSecret` / `ClusterSecretStore` CRDs are registered.
+- **IRSA:** Terraform pre-creates an `external-secrets-operator` ServiceAccount annotated with an IAM role, and the chart reuses it (`serviceAccount.create=false`). That role's policy is **scoped to just this project's secrets** — `arn:aws:secretsmanager:us-east-1:<account-id>:secret:fleetman-prod/*` — so ESO can read the fleetman secrets and nothing else.
+
+### The ClusterSecretStore (where + how to authenticate)
+
+Once the chart has installed the CRDs, Terraform creates one **cluster-scoped** `ClusterSecretStore` that every namespace can reference. It points ESO at AWS Secrets Manager and tells it to authenticate **as the ESO ServiceAccount via IRSA** — no static AWS keys anywhere:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: aws-secretsmanager        # cluster-scoped -> no namespace
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        jwt:                       # IRSA: assume the role via the SA's projected token
+          serviceAccountRef:
+            name: external-secrets-operator
+            namespace: external-secrets-operator
+```
+
+### The Secrets Manager secret (created empty, filled out-of-band)
+
+Terraform creates one **empty secret "shell" per app** that needs credentials (`secrets_manager_apps = ["position-tracker", "position-simulator"]`) — but never the values, so no credentials live in Git or state:
+
+```hcl
+module "secrets-manager" {
+  source   = "../modules/secrets-manager"
+  for_each = toset(var.secrets_manager_apps)   # position-tracker, position-simulator
+
+  create_secrets_manager = var.create_secrets_manager
+  region                 = var.region
+  secret_name            = "${var.project_name}-${var.env}/${each.value}"  # fleetman-prod/<app>
+}
+```
+
+You then set the real JSON out-of-band (Console or `aws secretsmanager put-secret-value`) — e.g. for `fleetman-prod/position-tracker`:
+
+```json
+{
+  "ACTIVEMQ_USER": "...",
+  "ACTIVEMQ_PASSWORD": "...",
+  "MONGODB_URI": "mongodb+srv://...@cluster/fleetman"
+}
+```
+
+### The ExternalSecret (which secret to pull) — shipped with each app
+
+Each app's Helm chart ships an `ExternalSecret`. It references the `ClusterSecretStore`, and `dataFrom.extract` pulls **every key** from that remote secret into one Kubernetes Secret named like the app (`creationPolicy: Owner` = ESO owns and manages it). `refreshInterval: 1h` means ESO re-reads Secrets Manager hourly, so a rotated value propagates on its own:
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: fleetman-position-tracker
+  namespace: fleetman-prod
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: fleetman-position-tracker          # the K8s Secret ESO creates
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: fleetman-prod/position-tracker  # pulls ALL keys from this SM secret
+```
+
+### How the pod consumes it
+
+ESO creates a Kubernetes Secret `fleetman-position-tracker` holding those keys. The Deployment is given that Secret's name (`existingSecret.name`) and loads **all** of its keys as environment variables with `envFrom → secretRef`:
+
+```yaml
+      envFrom:
+        - secretRef:
+            name: fleetman-position-tracker   # -> ACTIVEMQ_USER, ACTIVEMQ_PASSWORD, MONGODB_URI
+```
+
+They land as exactly the env vars the Spring property placeholders expect (`${ACTIVEMQ_USER}`, `${MONGODB_URI}`, …), so the app is fully configured without a single credential in the repo.
+
+### End to end
+
+1. **Terraform** creates the empty SM secret, the ESO IRSA role + ServiceAccount, installs the ESO Helm chart, and creates the `ClusterSecretStore`.
+2. **You** put the real credentials into the SM secret once (out-of-band).
+3. **CodePipeline / Helm** deploys the app, including its `ExternalSecret`.
+4. **ESO** authenticates via IRSA, reads the SM secret through the `ClusterSecretStore`, and creates the Kubernetes Secret.
+5. The **pod** loads that Secret as env vars (`envFrom`).
+6. **Rotate** the value in Secrets Manager and ESO re-syncs within the refresh interval — no redeploy needed.
+
+> **Aside — SSM Parameter Store.** Amazon MQ's *auto-generated* broker credentials are stored in **SSM Parameter Store** (a separate managed store); the app-level sensitive env vars above use **Secrets Manager + ESO**.
 
 [⬆ Back to top](#fleet-management-system)
 
