@@ -1594,6 +1594,8 @@ CodePipeline passes artifacts (source zip, build output) between stages through 
 
 The **API Gateway** needs to be exposed to the internet because the **webapp calls it directly from the user's browser**. The webapp is just static files (served from CloudFront + S3); the actual calls are made by the **browser** running the webapp's JavaScript, which hits the gateway for both the **REST** endpoints (the list of vehicles and their details) and a **WebSocket** stream (`wss://...`) that pushes **live position updates** to the map. That makes the gateway the **only** backend service reached from outside the cluster — the other two (Position Tracker, Position Simulator) are never called from the browser; they only talk to the gateway *inside* the cluster, so they stay private. Like every backend service the gateway runs as a **pod on EKS**, so the job here is to publish that in-cluster pod on a clean, public HTTPS URL — `https://fleetman-api.priyanshiseniordevops.online`.
 
+![The API Gateway answering over HTTPS at fleetman-api.priyanshiseniordevops.online](docs/images/api-gateway-browser.png)
+
 Four pieces make that happen, and we'll build them up in order: the **AWS Load Balancer Controller**, the **Ingress** it reads, the **CloudFront** distribution in front, and finally the **HTTPS/TLS** that secures the whole path.
 
 ## 1. The AWS Load Balancer Controller
