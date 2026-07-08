@@ -283,7 +283,7 @@ We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 
 | Bucket | Purpose | Created by |
 |--------|---------|-----------|
-| `fleetman-terraform123` | Stores the Terraform state file | Manually (must exist before Terraform can use it as its backend) |
+| `fleetman-terraform` | Stores the Terraform state file | Manually (must exist before Terraform can use it as its backend) |
 | `fleet-management-system-codepipeline-artifacts-prod` | Artifacts passed between AWS CodePipeline stages | Terraform |
 | `fleetman-webapp-prod` | Hosts the built Angular webapp (served via CloudFront) | Terraform |
 
@@ -1663,7 +1663,7 @@ re-pulls the latest commit from the source branch and runs Source → Build → 
 
 Amazon S3 is object storage. This project uses **three private buckets**:
 
-- **Terraform state** — `fleetman-terraform123` (created by hand, before `terraform init`)
+- **Terraform state** — `fleetman-terraform` (created by hand, before `terraform init`)
 - **CodePipeline artifacts** — `fleet-management-system-codepipeline-artifacts-prod` (created by Terraform)
 - **Webapp static site** — `fleetman-webapp-prod` (created by Terraform; served via CloudFront, covered in [Deploying the webapp](#deploying-the-webapp-cloudfront--s3))
 
@@ -1676,7 +1676,7 @@ Amazon S3 is object storage. This project uses **three private buckets**:
 - **Versioning.** Keeps every version of an object, so overwrites and deletes are recoverable (a delete just adds a delete marker). Essential for buckets holding important state.
 - **CORS.** Cross-Origin Resource Sharing rules tell the browser which other origins may call the bucket directly from JavaScript. Only needed when a browser on a different domain fetches objects straight from S3 — **not** needed when a CDN (CloudFront) serves them or for backend-only buckets.
 
-## Terraform state bucket — `fleetman-terraform123`
+## Terraform state bucket — `fleetman-terraform`
 
 Holds the Terraform state (the record of everything Terraform manages). It must exist **before** `terraform init`, so it's created by hand. What it needs for production:
 
