@@ -1692,9 +1692,9 @@ Holds the Terraform state (the record of everything Terraform manages). It must 
 
 **Recommended lifecycle policy (production):**
 
-- Keep **noncurrent (old) versions for 90 days**, then expire them.
-- **Abort incomplete multipart uploads after 7 days.**
-- **Never expire current objects** — you always want the latest state.
+- Keep noncurrent (old) versions for 90 days, then expire them.
+- Abort incomplete multipart uploads after 7 days.
+- Never expire current objects — you always want the latest state.
 
 ### CodePipeline artifacts bucket — `fleet-management-system-codepipeline-artifacts-prod`
 
@@ -1708,8 +1708,8 @@ CodePipeline passes artifacts (source zip, build output) between stages through 
 
 **Recommended lifecycle policy (production):** artifacts pile up on every run, so expire aggressively:
 
-- **Expire current objects after ~7 days** (only needed during a run).
-- **Expire noncurrent versions after 1 day** and **abort incomplete multipart uploads after 1 day.**
+- Expire current objects after ~7 days (only needed during a run).
+- Expire noncurrent versions after 1 day and abort incomplete multipart uploads after 1 day.
 
 ---
 
