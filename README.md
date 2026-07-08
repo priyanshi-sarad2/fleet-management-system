@@ -1700,7 +1700,7 @@ Holds the Terraform state (the record of everything Terraform manages). It must 
 
 CodePipeline passes artifacts (source zip, build output) between stages through this bucket; Terraform creates it. Production settings:
 
-- **Versioning: OFF** — artifacts are produced fresh on every run and never reused across builds, so there's nothing to recover. (Versioning is only *required* for an S3 **source** bucket, where CodePipeline tracks executions by object version — but our source is GitHub, and this is the artifact store, not a source.)
+- **Versioning: OFF** — artifacts are produced fresh on every run and never reused across builds, so there's nothing to recover. (Versioning is only *required* for an S3 **source** bucket, where CodePipeline tracks executions by object version — but our source is GitHub, and this is the artifact store, not a source.) Versioning has **no effect on pipeline speed** — it's purely a storage feature, so keeping it off simply avoids piling up unused old object versions.
 - **Encryption: ON** — SSE-S3 (AES-256).
 - **Block Public Access: ON (all four).**
 - **ACLs disabled** — Object Ownership = Bucket owner enforced.
