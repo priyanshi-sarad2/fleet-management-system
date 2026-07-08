@@ -18,10 +18,11 @@
 - [Deploying with Helm](#deploying-with-helm)
 - [Handling environment variables](#handling-environment-variables)
 - [ACM — TLS Certificates](#acm--tls-certificates)
-- [CI/CD with CodePipeline](#cicd-with-codepipeline)
 - [S3 Buckets](#s3-buckets)
+- [Exposing the API Gateway (CloudFront + ALB)](#exposing-the-api-gateway-cloudfront--alb)
 - [Deploying the webapp (CloudFront + S3)](#deploying-the-webapp-cloudfront--s3)
 - [Pod logs with Fluent Bit](#pod-logs-with-fluent-bit)
+- [CI/CD with CodePipeline](#cicd-with-codepipeline)
 
 ---
 
@@ -266,9 +267,9 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | [Docker](#docker) | Containerizes each service into an image (built in CI and pushed to ECR) |
 | [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
-| Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
+| [Load Balancer](#exposing-the-api-gateway-cloudfront--alb) | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | [S3](#s3-buckets) | Object storage — webapp static site (with CloudFront/OAC), CodePipeline artifacts, and the Terraform state bucket |
-| CloudFront | CDN in front of both the webapp and the API Gateway |
+| CloudFront | CDN in front of both the [webapp](#deploying-the-webapp-cloudfront--s3) and the [API Gateway](#exposing-the-api-gateway-cloudfront--alb) |
 | [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | SSM Parameter Store | Stores Amazon MQ's auto-generated broker credentials |
 | [ACM (public certificate)](#acm--tls-certificates) | Public TLS certificate (root domain + wildcard, in `us-east-1`) for HTTPS — used by CloudFront and the ALB |
@@ -316,12 +317,21 @@ We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 | [`fleet-management-system-codepipeline-artifacts-prod`](#codepipeline-artifacts-bucket--fleet-management-system-codepipeline-artifacts-prod) | Artifacts passed between AWS CodePipeline stages | Terraform |
 | `fleetman-webapp-prod` | Hosts the built Angular webapp (served via CloudFront) | Terraform |
 
+#### CloudFront
+
+We use two CloudFront distributions:
+
+| Distribution | Origin | Serves |
+|--------------|--------|--------|
+| [API Gateway](#exposing-the-api-gateway-cloudfront--alb) | Application Load Balancer (ALB) | The public REST + WebSocket API (`fleetman-api.<domain>`) |
+| [Webapp](#deploying-the-webapp-cloudfront--s3) | S3 bucket (`fleetman-webapp-prod`, via OAC) | The static Angular SPA (`fleetman.<domain>`) |
+
 #### How Each Service Is Deployed
 
 | Service | Deployment |
 |---------|-----------|
 | Webapp | [Static SPA served via CloudFront + S3](#deploying-the-webapp-cloudfront--s3) |
-| Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) |
+| Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) (the API Gateway is also [exposed publicly via CloudFront + ALB](#exposing-the-api-gateway-cloudfront--alb)) |
 | Queue | [Amazon MQ](#deploying-the-queue--amazon-mq) (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | [MongoDB Atlas](#mongodb-atlas) (managed) |
 
@@ -1524,200 +1534,6 @@ Fleetman runs everything in **us-east-1** *and* fronts it with CloudFront, so **
 
 ---
 
-# CI/CD with CodePipeline
-
-The three backend services (API Gateway, Position Tracker, Position Simulator) run on the EKS
-cluster, and each one has its own **AWS CodePipeline** that takes a code change all the way to
-the cluster — **build the image, push it to ECR, and deploy it with Helm** — with no manual
-steps. Without this you'd have to log in to ECR, `docker build`, `docker push`, then run
-`helm upgrade` by hand for every change; the pipeline does all of that consistently and
-records every run.
-
-There is **one pipeline per service**, so a change to one service only rebuilds and redeploys
-that service:
-
-![The three CodePipeline pipelines — one per service — all succeeded](docs/images/codepipeline-pipelines.png)
-
-## The stages
-
-Each service's pipeline has three stages: **Source → Build → EKSDeploy**.
-
-![A single pipeline showing the Source, Build and EKSDeploy stages](docs/images/codepipeline-stages.png)
-
-**1. Source** — A **GitHub connection** (CodeStar Connection) watches the repository. When the
-pipeline runs it pulls the repo and saves it as the `source_output` artifact. Because this is a
-monorepo, that artifact contains **all** the services' folders.
-
-**2. Build** (CodeBuild, runs the service's `buildspec.yml`) — logs in to ECR, builds the
-Docker image, tags it, and pushes it. The tag is generated as
-`v<short-commit-sha>-<timestamp>` (e.g. `v844e1-12-41-26-06-23`) so every build is unique and
-traceable back to a commit. It then writes that tag into `image-tag.txt` and packages the files
-the deploy stage will need into the `build_output` artifact.
-
-**3. EKSDeploy** (CodeBuild, runs `eks-deployspec.yml`) — installs `kubectl` + Helm, points
-`kubectl` at the cluster (`aws eks update-kubeconfig`), reads the tag from `image-tag.txt`, and
-runs a single `helm upgrade --install` to deploy that exact image tag (this is the same Helm
-command described in [Deploying with Helm](#deploying-with-helm)).
-
-## The build and deploy specs
-
-The Build stage runs each service's `buildspec.yml`:
-
-```yaml
-version: 0.2
-phases:
-  pre_build:
-    commands:
-      - aws ecr get-login-password --region ${REGION} | docker login -u AWS --password-stdin ${ECR_LOGIN}
-  build:
-    commands:
-      - cd k8s-fleetman-api-gateway
-      - TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
-      - docker build -t ${ECR_REPOSITORY_URI}:${TAG} .
-  post_build:
-    commands:
-      - docker push ${ECR_REPOSITORY_URI}:${TAG}
-      - printf "%s" "${TAG}" > image-tag.txt
-artifacts:
-  files:
-    - image-tag.txt
-    - eks-deployspec.yml
-    - helm-chart/**/*
-  base-directory: k8s-fleetman-api-gateway
-```
-
-The EKSDeploy stage runs `eks-deployspec.yml`:
-
-```yaml
-version: 0.2
-phases:
-  install:
-    commands:
-      - set -euo pipefail
-      - curl -sSL -o kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      - install -m 0755 kubectl /usr/local/bin/kubectl
-      - HELM_VERSION="v4.0.4"
-      - curl -sSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz
-      - tar -xzf helm.tar.gz
-      - install -m 0755 linux-amd64/helm /usr/local/bin/helm
-  pre_build:
-    commands:
-      - test -f image-tag.txt
-      - IMAGE_TAG="$(cat image-tag.txt)"
-      - test -d "$HELM_CHART_PATH"
-      - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
-      - kubectl -n "$K8S_NAMESPACE" get pods >/dev/null
-  build:
-    commands:
-      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m --force-conflicts
-      - kubectl -n "$K8S_NAMESPACE" rollout status deploy -l "app.kubernetes.io/instance=$HELM_RELEASE_NAME" --timeout=10m || true
-```
-
-The environment variables these specs use (`ECR_REPOSITORY_URI`, `ECR_LOGIN`, `REGION`,
-`AWS_REGION`, `EKS_CLUSTER_NAME`, `K8S_NAMESPACE`, `HELM_RELEASE_NAME`, `HELM_CHART_PATH`,
-`HELM_VALUES_FILE`) are injected by the CodeBuild projects, so the same specs work for every
-service.
-
-## How the monorepo is handled
-
-Everything lives in one repository, so the Source stage hands the **whole repo** to CodeBuild.
-CodeBuild does **not** guess which `buildspec.yml` to use — by default it looks for one at the
-artifact root, which doesn't exist here. So each CodeBuild project is told the **exact path** to
-the service's buildspec, derived automatically from the service name:
-
-```hcl
-# the build project points at the right service folder
-buildspec = "k8s-fleetman-${var.app}/buildspec.yml"   # e.g. k8s-fleetman-api-gateway/buildspec.yml
-```
-
-The build commands also `cd` into the service folder before `docker build`, and the artifacts
-are collected with `base-directory: k8s-fleetman-<service>` so the deploy files land at the root
-of `build_output` where the deploy stage expects them.
-
-## Base images come from ECR Public (not Docker Hub)
-
-The Dockerfiles pull their base images (`maven`, `eclipse-temurin`) from the **Amazon ECR
-Public** mirror rather than Docker Hub:
-
-```dockerfile
-FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-21 AS build
-FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-alpine
-```
-
-Docker Hub enforces **anonymous pull rate limits** by source IP, and CodeBuild runs on shared
-AWS IPs — so builds would intermittently fail at the `FROM` line with a rate-limit / manifest
-error. ECR Public hosts the **same** Docker Official Images (identical tags), isn't throttled
-the same way, and is network-close to CodeBuild. (The original Docker Hub versions are kept as
-`Dockerfile-dev` for local development.)
-
-## Giving the pipeline access to the cluster
-
-The deploy stage runs as the pipeline's IAM role, but **IAM permissions alone don't grant
-access to the Kubernetes API**. Our cluster uses EKS **`authentication_mode = API`**, where
-access is controlled by **EKS Access Entries**. So the CodePipeline role is added as an access
-entry; without it `kubectl`/`helm` are rejected with *"the server has asked for the client to
-provide credentials"*.
-
-Because the app charts include an **`ExternalSecret`** (a Custom Resource from the External
-Secrets Operator), the entry is associated with **cluster-admin** — AWS's namespace-scoped
-managed policies map to Kubernetes' built-in `admin` role, which doesn't cover CRDs. The entry
-is built in Terraform and references the role created in the same layer:
-
-```hcl
-# Infrastructure/main/eks.tf
-codepipeline = {
-  principal_arn = module.iam-assumable-role-codepipeline.iam_role_arn
-  policy_associations = {
-    cluster_admin = {
-      policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-      access_scope = { type = "cluster" }
-    }
-  }
-}
-```
-
-## Artifacts and the artifacts bucket
-
-CodePipeline stages don't share a disk — each stage runs in its own fresh container. They pass
-work to the next stage through **artifacts**, which CodePipeline stores in a dedicated **S3
-bucket** (one bucket shared by all the pipelines). The two artifacts here are:
-
-| Artifact | Produced by | Contains | Used by |
-|---|---|---|---|
-| `source_output` | Source | the pulled repo | Build |
-| `build_output` | Build | `image-tag.txt`, `eks-deployspec.yml`, `helm-chart/` | EKSDeploy |
-
-This is why the build packages `image-tag.txt` and the Helm chart into `build_output` — the
-deploy stage's container never sees the original repo, only this artifact. The bucket is simply
-the hand-off point between stages.
-
-## Permissions the pipeline needs
-
-The pipeline's IAM role is granted exactly what the stages do:
-
-| Permission | Why |
-|---|---|
-| S3 (artifacts bucket) | read/write the `source_output` and `build_output` artifacts between stages |
-| ECR | log in, push the built image, and let the cluster pull it |
-| CloudWatch Logs | CodeBuild streams each build/deploy's logs to CloudWatch so runs are debuggable |
-| EKS (`DescribeCluster`) | so `aws eks update-kubeconfig` can configure access in the deploy stage |
-| CodeStar Connection | so the Source stage can pull from GitHub |
-| IAM (PassRole) | so CodePipeline can hand the CodeBuild projects their service role |
-
-CloudWatch Logs access in particular is what makes the build output (every command and its
-result) visible in the console — without it CodeBuild fails up front because it can't create its
-log stream.
-
-## Running the pipeline
-
-A pipeline runs automatically on a new commit, or you can start it manually with the
-**Release change** button in the CodePipeline console (top-right in the screenshots above). It
-re-pulls the latest commit from the source branch and runs Source → Build → EKSDeploy.
-
-[⬆ Back to top](#fleet-management-system)
-
----
-
 # S3 Buckets
 
 Amazon S3 is object storage. This project uses **three private buckets**:
@@ -1769,6 +1585,99 @@ CodePipeline passes artifacts (source zip, build output) between stages through 
 
 - Expire current objects after ~7 days (only needed during a run).
 - Expire noncurrent versions after 1 day and abort incomplete multipart uploads after 1 day.
+
+[⬆ Back to top](#fleet-management-system)
+
+---
+
+# Exposing the API Gateway (CloudFront + ALB)
+
+The **API Gateway** is the only backend service the outside world talks to directly. The Angular webapp calls it for both the **REST** endpoints (the list of vehicles and their details) and a **WebSocket** stream (`wss://…`) that pushes **live position updates** to the map. Like the other backend services it runs as a **pod on EKS**, so the task here is to take that in-cluster pod and publish it on a clean, public HTTPS URL — `https://fleetman-api.priyanshiseniordevops.online`.
+
+A request makes four hops:
+
+```text
+Browser
+  │  https://fleetman-api.<domain>              REST + wss (real-time updates)
+  ▼
+CloudFront                                       custom domain · TLS · edge
+  │  https-only → origin  fleetman-alb.<domain>  (CNAME → the ALB's DNS name)
+  ▼
+Application Load Balancer                        internet-facing, built from the Ingress
+  │  routes to the target group (pod IPs)
+  ▼
+api-gateway Service ▶ api-gateway Pod            ClusterIP :8080
+```
+
+## From pod to public ALB (Service → Ingress → Load Balancer Controller)
+
+Inside the cluster the gateway is an ordinary **Deployment + Service** (a `ClusterIP` on port 8080 — reachable only from *inside* the cluster). To publish it, its Helm chart also ships an **Ingress**, and the **AWS Load Balancer Controller** (installed in the addons layer) watches for Ingress objects and provisions a real **Application Load Balancer** to match. The important annotations:
+
+```yaml
+alb.ingress.kubernetes.io/scheme: internet-facing        # public ALB (not internal)
+alb.ingress.kubernetes.io/target-type: ip                # register pod IPs directly
+alb.ingress.kubernetes.io/group.name: fleetman           # IngressGroup -> share ONE ALB
+alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+alb.ingress.kubernetes.io/certificate-arn: <wildcard ACM cert, us-east-1>
+alb.ingress.kubernetes.io/healthcheck-path: /            # the gateway returns 200 at "/"
+```
+
+- **`target-type: ip`** — with the Amazon VPC CNI every pod already has a real VPC IP, so the ALB puts the **pod IPs straight into its target group** (no extra NodePort hop).
+- **`group.name: fleetman`** — the **IngressGroup** feature merges every Ingress sharing this group name into a **single shared ALB**, instead of one ALB per service. Expose more services later and they reuse the same load balancer.
+- **`scheme: internet-facing`** — the ALB gets public IPs and is placed in the **public subnets**.
+- **`listen-ports` + `certificate-arn`** — the ALB listens on both 80 and 443; the wildcard cert is attached so the 443 listener can serve TLS.
+
+> **Gotcha we hit — AZ coverage.** An internet-facing ALB can only send traffic to pods in an **Availability Zone where it owns a public subnet**. Our nodes span **4 AZs**, so a pod can land in any of them; if the public subnets didn't cover all 4, a pod in an uncovered AZ shows up as an **"unused"/unhealthy target** and the API returns **503**. That's why the VPC has **one public subnet per AZ** — so the ALB can reach a pod wherever it's scheduled.
+
+## Why front the ALB with CloudFront at all?
+
+The ALB alone could serve the API, so why add CloudFront? For this project the value isn't caching (the API is dynamic — see below) but everything else CloudFront gives you at the edge:
+
+- **One clean domain family + one certificate.** The webapp is `fleetman.<domain>` and the API is `fleetman-api.<domain>` — both are CloudFront distributions on the **same root domain**, secured by the **same wildcard ACM cert** in `us-east-1`. Consistent, professional URLs with managed HTTPS.
+- **A stable origin name that matches the cert.** CloudFront's origin is the **`fleetman-alb.<domain>` CNAME**, which points at the ALB's ugly `*.elb.amazonaws.com` DNS name. Using this friendly name (instead of the raw ELB name) means the **origin's TLS certificate matches** (it's covered by the wildcard), so the https-only origin connection has no SNI/host mismatch.
+- **Edge TLS termination + AWS Shield Standard** (basic DDoS protection) in front of the cluster, and a single, consistent public entry point that mirrors how the webapp is served.
+
+> **Gotcha we hit — stale origin CNAME.** The `fleetman-alb` CNAME points at a **specific** ALB DNS name. If the Ingress/ALB is recreated, that DNS name changes, and until the CNAME is repointed CloudFront can't resolve the origin → **502 "can't resolve the origin domain."** Repoint the CNAME (and let CloudFront re-resolve) after any ALB recreation.
+
+## The API's CloudFront distribution (the mirror image of the webapp's)
+
+The API distribution is configured almost **opposite** to the static webapp, because an API is dynamic and per-request:
+
+| Setting | Webapp (static) | API Gateway (dynamic) |
+|---|---|---|
+| Caching | cache policy, cache key = path | **CachingDisabled** (min/default/max TTL = **0**) |
+| Forwarded to the origin | nothing (None/None/None) | **AllViewer** — every header, cookie, query string |
+| Compression | on (Gzip/Brotli) | **off** |
+| Origin | private S3 bucket (OAC) | the ALB, over **https-only** |
+
+In Terraform this is the `Infrastructure/modules/cloudfront` module, driven by the `cloudfront_alb_origins` map in `prod-terraform.tfvars`:
+
+```hcl
+cloudfront_alb_origins = {
+  "fleetman-api" = {
+    domain                 = "fleetman-api.priyanshiseniordevops.online"
+    origin_protocol_policy = "https-only"
+  }
+}
+```
+
+## WebSockets through CloudFront
+
+The live map is driven by a **WebSocket** (`wss://fleetman-api.<domain>/…`), and getting that through CloudFront needs two specific settings — both learned the hard way when the map stopped updating:
+
+- **`Managed-AllViewer` origin request policy** — forwards the headers that make the WebSocket handshake work (`Upgrade`, `Connection`, `Sec-WebSocket-Key/Version/Accept`, plus `Host`). With the default policy CloudFront strips these and the upgrade fails.
+- **Compression OFF** — CloudFront's automatic compression **breaks the WebSocket upgrade** (the handshake comes back as `HTTP 400`), so it must be disabled on this distribution. (There's nothing worth compressing on a dynamic API anyway.)
+- **Caching disabled** — API responses must never be cached, so all TTLs are `0`.
+
+## CORS (why the API needs `ALLOWED_ORIGINS`)
+
+The webapp is served from `https://fleetman.<domain>` but calls the API at `https://fleetman-api.<domain>` — a **different subdomain = a different origin** — so the browser's same-origin policy kicks in and the request is **cross-origin**. The API therefore has to explicitly allow the webapp's origin, which it does via the `ALLOWED_ORIGINS` env var on the gateway (set in its Helm values):
+
+```yaml
+ALLOWED_ORIGINS: "https://fleetman.priyanshiseniordevops.online"
+```
+
+This is the one place CORS matters in the project — it's the API being called cross-origin, never S3 (see the [CORS note in S3 Buckets](#s3-buckets)).
 
 [⬆ Back to top](#fleet-management-system)
 
@@ -1960,6 +1869,32 @@ The key details on the distribution:
 
 In Terraform the OAC is the `aws_cloudfront_origin_access_control` resource in the module, and the "only this distribution can read the bucket" rule is the separate `Infrastructure/modules/s3-bucket-policy` module.
 
+This is the bucket policy that the OAC pattern requires — created here by the `s3-bucket-policy` module (in the AWS console, CloudFront generates this exact statement for you to copy onto the bucket). It makes sure that **only this one CloudFront distribution** can read the objects:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowCloudFrontServicePrincipalReadOnly",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "cloudfront.amazonaws.com"
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::fleetman-webapp-prod/*",
+            "Condition": {
+                "StringEquals": {
+                    "AWS:SourceArn": "arn:aws:cloudfront::<AWS_ACCOUNT_ID>:distribution/E3H143JG7ERXOS"
+                }
+            }
+        }
+    ]
+}
+```
+
+The key line is the `AWS:SourceArn` **condition**. The `Principal` is the shared CloudFront **service** (`cloudfront.amazonaws.com`), which by itself would let *any* CloudFront distribution in; the condition narrows that down so the bucket only answers requests coming from **your specific distribution** (`.../distribution/E3H143JG7ERXOS`). Combined with Block Public Access, that means the only way to reach these files is through this distribution — a direct `https://fleetman-webapp-prod.s3...` request is denied.
+
 ### Behavior: viewer settings
 
 ![CloudFront default behavior — redirect HTTP to HTTPS, allowed methods GET/HEAD/OPTIONS, compression on](docs/images/cloudfront-behavior-settings.png)
@@ -2141,5 +2076,199 @@ The Helm chart is told to **use this pre-created service account** (`serviceAcco
 ## Note on EKS control-plane logs
 
 This is separate from **EKS control-plane logging** (`api`, `audit`, `authenticator`), which EKS would ship to `/aws/eks/<cluster>/cluster`. We keep that **disabled** (`eks_cluster_enabled_log_types = []`) to avoid high-volume, costly audit logs — Fluent Bit covers the application logs we actually want.
+
+[⬆ Back to top](#fleet-management-system)
+
+---
+
+# CI/CD with CodePipeline
+
+The three backend services (API Gateway, Position Tracker, Position Simulator) run on the EKS
+cluster, and each one has its own **AWS CodePipeline** that takes a code change all the way to
+the cluster — **build the image, push it to ECR, and deploy it with Helm** — with no manual
+steps. Without this you'd have to log in to ECR, `docker build`, `docker push`, then run
+`helm upgrade` by hand for every change; the pipeline does all of that consistently and
+records every run.
+
+There is **one pipeline per service**, so a change to one service only rebuilds and redeploys
+that service:
+
+![The three CodePipeline pipelines — one per service — all succeeded](docs/images/codepipeline-pipelines.png)
+
+## The stages
+
+Each service's pipeline has three stages: **Source → Build → EKSDeploy**.
+
+![A single pipeline showing the Source, Build and EKSDeploy stages](docs/images/codepipeline-stages.png)
+
+**1. Source** — A **GitHub connection** (CodeStar Connection) watches the repository. When the
+pipeline runs it pulls the repo and saves it as the `source_output` artifact. Because this is a
+monorepo, that artifact contains **all** the services' folders.
+
+**2. Build** (CodeBuild, runs the service's `buildspec.yml`) — logs in to ECR, builds the
+Docker image, tags it, and pushes it. The tag is generated as
+`v<short-commit-sha>-<timestamp>` (e.g. `v844e1-12-41-26-06-23`) so every build is unique and
+traceable back to a commit. It then writes that tag into `image-tag.txt` and packages the files
+the deploy stage will need into the `build_output` artifact.
+
+**3. EKSDeploy** (CodeBuild, runs `eks-deployspec.yml`) — installs `kubectl` + Helm, points
+`kubectl` at the cluster (`aws eks update-kubeconfig`), reads the tag from `image-tag.txt`, and
+runs a single `helm upgrade --install` to deploy that exact image tag (this is the same Helm
+command described in [Deploying with Helm](#deploying-with-helm)).
+
+## The build and deploy specs
+
+The Build stage runs each service's `buildspec.yml`:
+
+```yaml
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region ${REGION} | docker login -u AWS --password-stdin ${ECR_LOGIN}
+  build:
+    commands:
+      - cd k8s-fleetman-api-gateway
+      - TAG="v${CODEBUILD_RESOLVED_SOURCE_VERSION:0:5}-$(date +%I-%M-%y-%m-%d)"
+      - docker build -t ${ECR_REPOSITORY_URI}:${TAG} .
+  post_build:
+    commands:
+      - docker push ${ECR_REPOSITORY_URI}:${TAG}
+      - printf "%s" "${TAG}" > image-tag.txt
+artifacts:
+  files:
+    - image-tag.txt
+    - eks-deployspec.yml
+    - helm-chart/**/*
+  base-directory: k8s-fleetman-api-gateway
+```
+
+The EKSDeploy stage runs `eks-deployspec.yml`:
+
+```yaml
+version: 0.2
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - curl -sSL -o kubectl "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      - install -m 0755 kubectl /usr/local/bin/kubectl
+      - HELM_VERSION="v4.0.4"
+      - curl -sSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz
+      - tar -xzf helm.tar.gz
+      - install -m 0755 linux-amd64/helm /usr/local/bin/helm
+  pre_build:
+    commands:
+      - test -f image-tag.txt
+      - IMAGE_TAG="$(cat image-tag.txt)"
+      - test -d "$HELM_CHART_PATH"
+      - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+      - kubectl -n "$K8S_NAMESPACE" get pods >/dev/null
+  build:
+    commands:
+      - helm upgrade --install "$HELM_RELEASE_NAME" "$HELM_CHART_PATH" --namespace "$K8S_NAMESPACE" -f "$HELM_VALUES_FILE" --set image.repository="$ECR_REPOSITORY_URI" --set image.tag="$IMAGE_TAG" --wait --timeout 10m --force-conflicts
+      - kubectl -n "$K8S_NAMESPACE" rollout status deploy -l "app.kubernetes.io/instance=$HELM_RELEASE_NAME" --timeout=10m || true
+```
+
+The environment variables these specs use (`ECR_REPOSITORY_URI`, `ECR_LOGIN`, `REGION`,
+`AWS_REGION`, `EKS_CLUSTER_NAME`, `K8S_NAMESPACE`, `HELM_RELEASE_NAME`, `HELM_CHART_PATH`,
+`HELM_VALUES_FILE`) are injected by the CodeBuild projects, so the same specs work for every
+service.
+
+## How the monorepo is handled
+
+Everything lives in one repository, so the Source stage hands the **whole repo** to CodeBuild.
+CodeBuild does **not** guess which `buildspec.yml` to use — by default it looks for one at the
+artifact root, which doesn't exist here. So each CodeBuild project is told the **exact path** to
+the service's buildspec, derived automatically from the service name:
+
+```hcl
+# the build project points at the right service folder
+buildspec = "k8s-fleetman-${var.app}/buildspec.yml"   # e.g. k8s-fleetman-api-gateway/buildspec.yml
+```
+
+The build commands also `cd` into the service folder before `docker build`, and the artifacts
+are collected with `base-directory: k8s-fleetman-<service>` so the deploy files land at the root
+of `build_output` where the deploy stage expects them.
+
+## Base images come from ECR Public (not Docker Hub)
+
+The Dockerfiles pull their base images (`maven`, `eclipse-temurin`) from the **Amazon ECR
+Public** mirror rather than Docker Hub:
+
+```dockerfile
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-21 AS build
+FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-alpine
+```
+
+Docker Hub enforces **anonymous pull rate limits** by source IP, and CodeBuild runs on shared
+AWS IPs — so builds would intermittently fail at the `FROM` line with a rate-limit / manifest
+error. ECR Public hosts the **same** Docker Official Images (identical tags), isn't throttled
+the same way, and is network-close to CodeBuild. (The original Docker Hub versions are kept as
+`Dockerfile-dev` for local development.)
+
+## Giving the pipeline access to the cluster
+
+The deploy stage runs as the pipeline's IAM role, but **IAM permissions alone don't grant
+access to the Kubernetes API**. Our cluster uses EKS **`authentication_mode = API`**, where
+access is controlled by **EKS Access Entries**. So the CodePipeline role is added as an access
+entry; without it `kubectl`/`helm` are rejected with *"the server has asked for the client to
+provide credentials"*.
+
+Because the app charts include an **`ExternalSecret`** (a Custom Resource from the External
+Secrets Operator), the entry is associated with **cluster-admin** — AWS's namespace-scoped
+managed policies map to Kubernetes' built-in `admin` role, which doesn't cover CRDs. The entry
+is built in Terraform and references the role created in the same layer:
+
+```hcl
+# Infrastructure/main/eks.tf
+codepipeline = {
+  principal_arn = module.iam-assumable-role-codepipeline.iam_role_arn
+  policy_associations = {
+    cluster_admin = {
+      policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+      access_scope = { type = "cluster" }
+    }
+  }
+}
+```
+
+## Artifacts and the artifacts bucket
+
+CodePipeline stages don't share a disk — each stage runs in its own fresh container. They pass
+work to the next stage through **artifacts**, which CodePipeline stores in a dedicated **S3
+bucket** (one bucket shared by all the pipelines). The two artifacts here are:
+
+| Artifact | Produced by | Contains | Used by |
+|---|---|---|---|
+| `source_output` | Source | the pulled repo | Build |
+| `build_output` | Build | `image-tag.txt`, `eks-deployspec.yml`, `helm-chart/` | EKSDeploy |
+
+This is why the build packages `image-tag.txt` and the Helm chart into `build_output` — the
+deploy stage's container never sees the original repo, only this artifact. The bucket is simply
+the hand-off point between stages.
+
+## Permissions the pipeline needs
+
+The pipeline's IAM role is granted exactly what the stages do:
+
+| Permission | Why |
+|---|---|
+| S3 (artifacts bucket) | read/write the `source_output` and `build_output` artifacts between stages |
+| ECR | log in, push the built image, and let the cluster pull it |
+| CloudWatch Logs | CodeBuild streams each build/deploy's logs to CloudWatch so runs are debuggable |
+| EKS (`DescribeCluster`) | so `aws eks update-kubeconfig` can configure access in the deploy stage |
+| CodeStar Connection | so the Source stage can pull from GitHub |
+| IAM (PassRole) | so CodePipeline can hand the CodeBuild projects their service role |
+
+CloudWatch Logs access in particular is what makes the build output (every command and its
+result) visible in the console — without it CodeBuild fails up front because it can't create its
+log stream.
+
+## Running the pipeline
+
+A pipeline runs automatically on a new commit, or you can start it manually with the
+**Release change** button in the CodePipeline console (top-right in the screenshots above). It
+re-pulls the latest commit from the source branch and runs Source → Build → EKSDeploy.
 
 [⬆ Back to top](#fleet-management-system)
