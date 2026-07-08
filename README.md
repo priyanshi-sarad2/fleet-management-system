@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [Demo](#demo)
 - [How Each Part Works](#how-each-part-works)
 - [Concepts & Design Decisions](#concepts--design-decisions)
 - [Infrastructure Overview](#infrastructure-overview)
@@ -41,6 +42,12 @@ The idea is simple:
 Since there are no real trucks in this demo, the vehicle movement is simulated by one of the services (the Position Simulator), which replays real GPS tracks from data files.
 
 The whole thing is built as a microservices architecture (instead of one big monolith — see [Concepts & Design Decisions](#concepts--design-decisions) below), packaged into Docker containers, and deployed on Kubernetes (AWS EKS).
+
+## Demo
+
+A short walkthrough of the live app — real-time vehicle tracking, and the red route trail drawn when a vehicle is selected:
+
+https://github.com/user-attachments/assets/194cb812-aefd-4f41-aeb9-b92a4105af26
 
 ## How It Works (High Level)
 
