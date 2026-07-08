@@ -4,7 +4,7 @@
 
 - [How Each Part Works](#how-each-part-works)
 - [Concepts & Design Decisions](#concepts--design-decisions)
-- [Deployment on AWS EKS](#deployment-on-aws-eks)
+- [Infrastructure Overview](#infrastructure-overview)
 - [Using Terraform for Infra Creation](#using-terraform-for-infra-creation)
 - [VPC](#vpc)
 - [ECR](#ecr)
@@ -194,7 +194,7 @@ Each microservice should be highly cohesive and loosely coupled.
 
 ---
 
-# Deployment on AWS EKS
+# Infrastructure Overview
 
 ## Creating the AWS Infrastructure
 
