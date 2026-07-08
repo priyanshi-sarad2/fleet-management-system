@@ -320,7 +320,7 @@ We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 
 | Service | Deployment |
 |---------|-----------|
-| Webapp | Static SPA served via CloudFront + S3 |
+| Webapp | [Static SPA served via CloudFront + S3](#deploying-the-webapp-cloudfront--s3) |
 | Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) |
 | Queue | [Amazon MQ](#deploying-the-queue--amazon-mq) (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | [MongoDB Atlas](#mongodb-atlas) (managed) |
