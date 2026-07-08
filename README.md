@@ -230,21 +230,22 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 
 | Service | Why it's used |
 |---------|---------------|
-| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
+| IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
 | [VPC](#vpc) | EKS lives inside its own Virtual Private Cloud (private network) |
 | [ECR](#ecr) | Stores the Docker images for our services |
 | [Amazon MQ](#deploying-the-queue--amazon-mq) | Managed message broker for our queue |
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
-| IAM | Identities, roles, and permissions for the cluster, nodes, and pods |
-| [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
-| [CodePipeline](#cicd-with-codepipeline) | CI/CD — builds the service images and deploys them to the cluster |
-| ACM (public certificate) | Public TLS certificate for HTTPS, used by the load balancer and CloudFront |
-| Route 53 | DNS — hosts the domain's records (e.g. the API Gateway host pointing at the ALB) |
+| [Docker](#docker) | Containerizes each service into an image (built in CI and pushed to ECR) |
+| [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
-| CloudFront | CDN in front of both the webapp and the API Gateway |
 | S3 | Object storage — webapp static site (with CloudFront/OAC), CodePipeline artifacts, and the Terraform state bucket |
-| CloudWatch (Logs) | Central logging — Fluent Bit ships pod logs here (`/aws/eks/fleetman/<app>`) |
+| CloudFront | CDN in front of both the webapp and the API Gateway |
+| [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | SSM Parameter Store | Stores Amazon MQ's auto-generated broker credentials |
+| ACM (public certificate) | Public TLS certificate (root domain + wildcard, in `us-east-1`) for HTTPS — used by CloudFront and the ALB |
+| DNS (Route 53 / Namecheap) | Hosts the domain's records; this project uses Namecheap (Route 53 is also supported) |
+| [CodePipeline](#cicd-with-codepipeline) | CI/CD — builds the service images and deploys them to the cluster |
+| CloudWatch (Logs) | Central logging — Fluent Bit ships pod logs here (`/aws/eks/fleetman/<app>`) |
 
 #### IAM
 
@@ -683,6 +684,157 @@ By adding only this IP to the access list, the Atlas cluster can **only be reach
 
 ---
 
+# Docker
+
+For our three microservices — **API Gateway**, **Position Simulator**, and **Position Tracker** — we build a **Docker image** for each.
+
+The great thing about a Docker image is that it **encapsulates the entire application into one image**: it contains the source code *and* all the dependencies the application needs to run. The image has everything the app needs, so it runs the same way everywhere.
+
+Once an image is built, we can push it to a **registry** — Docker Hub or **Amazon ECR**. From there, we can deploy the application easily anywhere using that image — an on-prem Docker host, a Kubernetes cluster, or the cloud.
+
+In this project, each of the three apps has its own **Dockerfile**, and the built images are pushed to the **ECR repositories created via Terraform**.
+
+## How a Java app works (using the API Gateway as the example)
+
+Java is a **compiled** language, so there's an extra step: you can't just "run the source." The code must first be **compiled and packaged** into an artifact (a `.jar`), and then the Java runtime runs that.
+
+The API Gateway is a **Spring Boot app (Java 8)**, built with **Maven**:
+
+1. You write the `.java` source.
+2. **Maven compiles** it (`.java` → `.class` bytecode) and **packages** it into a single JAR.
+3. Because it's Spring Boot, that JAR is a **"fat JAR" (uber JAR)** — one self-contained file containing your compiled code, **all** dependency libraries, **and an embedded Tomcat web server**. So there's no separate server to install.
+
+At runtime, the **JRE** executes the bytecode and the **embedded Tomcat** serves HTTP on **port 8080**.
+
+| File | Purpose |
+|------|---------|
+| `pom.xml` | Dependencies + build configuration (Maven) |
+| `src/` | The Java source code |
+| `target/*.jar` | The built fat JAR, produced by `mvn package` |
+| `Dockerfile` | Recipe to build the container image |
+
+## Deploying it manually (without Docker)
+
+1. Build the JAR:
+   ```bash
+   mvn package          # produces target/fleetman-0.0.1-SNAPSHOT.jar
+   ```
+2. Copy that JAR to the server.
+3. Install a **JRE** on the server (e.g. `apt install openjdk-8-jre`).
+4. Run it:
+   ```bash
+   java -jar fleetman-0.0.1-SNAPSHOT.jar   # embedded Tomcat listens on 8080
+   ```
+5. In production you'd run it as a **systemd service** so it stays up and restarts on crash/reboot.
+
+The pain: every server needs the **exact right Java version** and setup, and you manage the JAR + service by hand — the classic "works on my machine" problem.
+
+## Why Docker is better here
+
+Docker packages the **JRE + the JAR + everything the app needs** into a single **image**. That image runs **identically everywhere** — your laptop, any Docker host, a Kubernetes cluster, or the cloud — with no need to install or match the right Java version on each server. Build once, run anywhere.
+
+## The Dockerfile (API Gateway)
+
+```dockerfile
+# ---------- Stage 1: build ----------
+FROM maven:3.6.3-jdk-8-slim AS build
+WORKDIR /app
+
+# Copy only the pom first and pre-download dependencies (cached layer).
+COPY pom.xml ./
+RUN mvn -q -B dependency:go-offline
+
+# Now copy the source and build the jar (tests skipped for the image build)
+COPY src ./src
+RUN mvn -q -B -DskipTests package
+
+# ---------- Stage 2: runtime ----------
+FROM eclipse-temurin:8-jre-alpine
+LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
+
+# Create a non-root user/group and an app dir it owns (security best practice)
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app && chown app:app /app
+
+WORKDIR /app
+# Copy the jar out of the build stage and give ownership to the app user
+COPY --chown=app:app --from=build /app/target/*.jar app.jar
+
+USER app
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+## Dockerfile breakdown
+
+It's a **multi-stage build** — a heavy "build" stage that compiles the JAR, and a small "runtime" stage that just runs it.
+
+Why multi-stage: the build tools (Maven, JDK) and source code stay in the build stage and are **thrown away** — only the final jar is carried into the runtime image. This keeps the final image **much smaller**, gives it a **smaller attack surface** (no compilers/source shipped to production), and makes it faster to push and pull.
+
+**Build stage**
+- `FROM maven:3.6.3-jdk-8-slim AS build` — an image with **Maven + JDK**, needed to compile the code.
+- `COPY pom.xml` then `mvn dependency:go-offline` — downloads all dependencies **first**, as its own layer. Docker caches layers, so this only re-runs when `pom.xml` changes — everyday **code edits don't re-download dependencies**, which makes rebuilds fast.
+- `COPY src` then `mvn -DskipTests package` — compiles and builds the fat JAR at `/app/target/*.jar`.
+
+**Runtime stage**
+- `FROM eclipse-temurin:8-jre-alpine` — a tiny **JRE-only Alpine** image: just enough to *run* Java, with no JDK/Maven/source → a small, more secure final image.
+- `addgroup`/`adduser` + `USER app` — creates and switches to a **non-root user**, so the app never runs as root (security best practice).
+- `mkdir + chown /app` and `COPY --chown=app:app ...` — the **`app` user owns** both the working directory and the jar.
+- `COPY --from=build .../*.jar app.jar` — copies **only the built jar** from the build stage (no build tooling in the final image) and renames it `app.jar` (the wildcard avoids hardcoding the version).
+- `EXPOSE 8080` — documents the port the embedded Tomcat listens on.
+- `ENTRYPOINT ["java","-jar","app.jar"]` — runs the app. The **exec form** (JSON array) makes `java` run as **PID 1**, so it receives stop signals for a clean shutdown.
+
+The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is identical but **without `EXPOSE`**, since it doesn't serve HTTP — it only sends messages to the queue.
+
+## Building and pushing the image to ECR (manual)
+
+> Note: these are the **manual** build-and-push steps. In this project this is done **automatically via AWS CodePipeline** — the steps below are just to show what happens under the hood.
+
+First set the registry and region (replace `<account-id>` with your AWS account ID):
+
+```bash
+export AWS_PROFILE=fleetman-prod
+export AWS_REGION=us-east-1
+export ECR=<account-id>.dkr.ecr.us-east-1.amazonaws.com
+```
+
+**1. Log in to ECR** (authenticates Docker to your private registry):
+
+```bash
+aws ecr get-login-password --region "$AWS_REGION" --profile fleetman-prod \
+  | docker login --username AWS --password-stdin "$ECR"
+```
+
+**2. Build the image** (run from the service folder, tagging it with the ECR repo URL):
+
+```bash
+cd k8s-fleetman-api-gateway
+docker build -t "$ECR/fleetman-api-gateway:v1" .
+```
+
+**3. Push it to ECR:**
+
+```bash
+docker push "$ECR/fleetman-api-gateway:v1"
+```
+
+Repeat for the other two services from their folders:
+
+```bash
+cd ../k8s-fleetman-position-simulator
+docker build -t "$ECR/fleetman-position-simulator:v1" .
+docker push "$ECR/fleetman-position-simulator:v1"
+
+cd ../k8s-fleetman-position-tracker
+docker build -t "$ECR/fleetman-position-tracker:v1" .
+docker push "$ECR/fleetman-position-tracker:v1"
+```
+
+The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
+
+---
+
 # Deploying EKS cluster
 
 An EKS cluster has two major components: the **control plane** and the **data plane**.
@@ -888,157 +1040,6 @@ The add-ons installed in this cluster:
 - **eks-pod-identity-agent** — lets pods assume IAM roles (pod identity)
 
 Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` is added on top, for pod-level IAM access.
-
----
-
-# Docker
-
-For our three microservices — **API Gateway**, **Position Simulator**, and **Position Tracker** — we build a **Docker image** for each.
-
-The great thing about a Docker image is that it **encapsulates the entire application into one image**: it contains the source code *and* all the dependencies the application needs to run. The image has everything the app needs, so it runs the same way everywhere.
-
-Once an image is built, we can push it to a **registry** — Docker Hub or **Amazon ECR**. From there, we can deploy the application easily anywhere using that image — an on-prem Docker host, a Kubernetes cluster, or the cloud.
-
-In this project, each of the three apps has its own **Dockerfile**, and the built images are pushed to the **ECR repositories created via Terraform**.
-
-## How a Java app works (using the API Gateway as the example)
-
-Java is a **compiled** language, so there's an extra step: you can't just "run the source." The code must first be **compiled and packaged** into an artifact (a `.jar`), and then the Java runtime runs that.
-
-The API Gateway is a **Spring Boot app (Java 8)**, built with **Maven**:
-
-1. You write the `.java` source.
-2. **Maven compiles** it (`.java` → `.class` bytecode) and **packages** it into a single JAR.
-3. Because it's Spring Boot, that JAR is a **"fat JAR" (uber JAR)** — one self-contained file containing your compiled code, **all** dependency libraries, **and an embedded Tomcat web server**. So there's no separate server to install.
-
-At runtime, the **JRE** executes the bytecode and the **embedded Tomcat** serves HTTP on **port 8080**.
-
-| File | Purpose |
-|------|---------|
-| `pom.xml` | Dependencies + build configuration (Maven) |
-| `src/` | The Java source code |
-| `target/*.jar` | The built fat JAR, produced by `mvn package` |
-| `Dockerfile` | Recipe to build the container image |
-
-## Deploying it manually (without Docker)
-
-1. Build the JAR:
-   ```bash
-   mvn package          # produces target/fleetman-0.0.1-SNAPSHOT.jar
-   ```
-2. Copy that JAR to the server.
-3. Install a **JRE** on the server (e.g. `apt install openjdk-8-jre`).
-4. Run it:
-   ```bash
-   java -jar fleetman-0.0.1-SNAPSHOT.jar   # embedded Tomcat listens on 8080
-   ```
-5. In production you'd run it as a **systemd service** so it stays up and restarts on crash/reboot.
-
-The pain: every server needs the **exact right Java version** and setup, and you manage the JAR + service by hand — the classic "works on my machine" problem.
-
-## Why Docker is better here
-
-Docker packages the **JRE + the JAR + everything the app needs** into a single **image**. That image runs **identically everywhere** — your laptop, any Docker host, a Kubernetes cluster, or the cloud — with no need to install or match the right Java version on each server. Build once, run anywhere.
-
-## The Dockerfile (API Gateway)
-
-```dockerfile
-# ---------- Stage 1: build ----------
-FROM maven:3.6.3-jdk-8-slim AS build
-WORKDIR /app
-
-# Copy only the pom first and pre-download dependencies (cached layer).
-COPY pom.xml ./
-RUN mvn -q -B dependency:go-offline
-
-# Now copy the source and build the jar (tests skipped for the image build)
-COPY src ./src
-RUN mvn -q -B -DskipTests package
-
-# ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:8-jre-alpine
-LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
-
-# Create a non-root user/group and an app dir it owns (security best practice)
-RUN addgroup -S app && adduser -S app -G app \
-    && mkdir -p /app && chown app:app /app
-
-WORKDIR /app
-# Copy the jar out of the build stage and give ownership to the app user
-COPY --chown=app:app --from=build /app/target/*.jar app.jar
-
-USER app
-
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
-## Dockerfile breakdown
-
-It's a **multi-stage build** — a heavy "build" stage that compiles the JAR, and a small "runtime" stage that just runs it.
-
-Why multi-stage: the build tools (Maven, JDK) and source code stay in the build stage and are **thrown away** — only the final jar is carried into the runtime image. This keeps the final image **much smaller**, gives it a **smaller attack surface** (no compilers/source shipped to production), and makes it faster to push and pull.
-
-**Build stage**
-- `FROM maven:3.6.3-jdk-8-slim AS build` — an image with **Maven + JDK**, needed to compile the code.
-- `COPY pom.xml` then `mvn dependency:go-offline` — downloads all dependencies **first**, as its own layer. Docker caches layers, so this only re-runs when `pom.xml` changes — everyday **code edits don't re-download dependencies**, which makes rebuilds fast.
-- `COPY src` then `mvn -DskipTests package` — compiles and builds the fat JAR at `/app/target/*.jar`.
-
-**Runtime stage**
-- `FROM eclipse-temurin:8-jre-alpine` — a tiny **JRE-only Alpine** image: just enough to *run* Java, with no JDK/Maven/source → a small, more secure final image.
-- `addgroup`/`adduser` + `USER app` — creates and switches to a **non-root user**, so the app never runs as root (security best practice).
-- `mkdir + chown /app` and `COPY --chown=app:app ...` — the **`app` user owns** both the working directory and the jar.
-- `COPY --from=build .../*.jar app.jar` — copies **only the built jar** from the build stage (no build tooling in the final image) and renames it `app.jar` (the wildcard avoids hardcoding the version).
-- `EXPOSE 8080` — documents the port the embedded Tomcat listens on.
-- `ENTRYPOINT ["java","-jar","app.jar"]` — runs the app. The **exec form** (JSON array) makes `java` run as **PID 1**, so it receives stop signals for a clean shutdown.
-
-The **Position Tracker** uses the same Dockerfile. The **Position Simulator** is identical but **without `EXPOSE`**, since it doesn't serve HTTP — it only sends messages to the queue.
-
-## Building and pushing the image to ECR (manual)
-
-> Note: these are the **manual** build-and-push steps. In this project this is done **automatically via AWS CodePipeline** — the steps below are just to show what happens under the hood.
-
-First set the registry and region (replace `<account-id>` with your AWS account ID):
-
-```bash
-export AWS_PROFILE=fleetman-prod
-export AWS_REGION=us-east-1
-export ECR=<account-id>.dkr.ecr.us-east-1.amazonaws.com
-```
-
-**1. Log in to ECR** (authenticates Docker to your private registry):
-
-```bash
-aws ecr get-login-password --region "$AWS_REGION" --profile fleetman-prod \
-  | docker login --username AWS --password-stdin "$ECR"
-```
-
-**2. Build the image** (run from the service folder, tagging it with the ECR repo URL):
-
-```bash
-cd k8s-fleetman-api-gateway
-docker build -t "$ECR/fleetman-api-gateway:v1" .
-```
-
-**3. Push it to ECR:**
-
-```bash
-docker push "$ECR/fleetman-api-gateway:v1"
-```
-
-Repeat for the other two services from their folders:
-
-```bash
-cd ../k8s-fleetman-position-simulator
-docker build -t "$ECR/fleetman-position-simulator:v1" .
-docker push "$ECR/fleetman-position-simulator:v1"
-
-cd ../k8s-fleetman-position-tracker
-docker build -t "$ECR/fleetman-position-tracker:v1" .
-docker push "$ECR/fleetman-position-tracker:v1"
-```
-
-The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
 
 ---
 
@@ -1426,6 +1427,40 @@ The ConfigMap is rendered by the **Helm chart** from the values file (the `confi
 For this project's sensitive values I use **AWS Secrets Manager**, since it's purpose-built for secrets and supports encryption, rotation, and auditing out of the box.
 
 ## Using AWS Secrets Manager for sensitive values
+
+---
+
+# ACM — TLS Certificates
+
+AWS Certificate Manager (ACM) issues and auto-renews the free **public TLS certificate** that gives our endpoints HTTPS. Fleetman uses a single public certificate that covers the root domain and a wildcard:
+
+- `priyanshiseniordevops.online`
+- `*.priyanshiseniordevops.online`
+
+The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetman-api.*` (API), and `fleetman-alb.*` (ALB origin) — so one certificate secures the whole stack.
+
+![ACM certificate — issued, covering the domain and its wildcard](docs/images/acm-certificate.png)
+
+## Requesting the certificate (DNS validation)
+
+1. In ACM, choose **Request → Public certificate**.
+2. Add both names: `priyanshiseniordevops.online` and `*.priyanshiseniordevops.online`.
+3. Pick **DNS validation** — ACM gives you a CNAME record per name to add at your DNS provider. Once those records resolve, ACM validates and the status flips to **Issued**. DNS validation also lets ACM **auto-renew** the certificate as long as the records stay in place.
+
+In this project the certificate is created **outside Terraform** — the tfvars sets `create_acm_certificate = false` and points at the existing cert ARN — so it must already exist and be **Issued** before you `terraform apply`.
+
+![ACM certificate detail — both the root domain and the wildcard validated](docs/images/acm-certificate-detail.png)
+
+## Why us-east-1 — global vs regional certificates
+
+This is the important gotcha. **ACM is a regional service:** a certificate lives in the region you create it in and can only be attached to resources **in that same region** — with one special exception, **CloudFront**.
+
+- **CloudFront is a global service and only reads certificates from `us-east-1` (N. Virginia).** So any certificate used by CloudFront **must** be created in `us-east-1`, no matter where the rest of your infrastructure runs.
+- **Regional services** — an **Application Load Balancer**, API Gateway, etc. — use a certificate **in their own region**. An ALB in `ap-south-1` needs its certificate in `ap-south-1`.
+
+Fleetman runs everything in **us-east-1** *and* fronts it with CloudFront, so **one `us-east-1` certificate serves both** the CloudFront distributions and the ALB — that's why the cert lives in us-east-1. (If the cluster/ALB ever moved to another region while keeping CloudFront, we'd need **two** certificates: one in `us-east-1` for CloudFront and one in the ALB's region for the ALB.)
+
+**Rule of thumb:** CloudFront → certificate in **`us-east-1`** (always); ALB / API Gateway / other regional services → certificate in **that resource's own region**.
 
 ---
 
