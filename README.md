@@ -1444,9 +1444,10 @@ The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetma
 
 ## Requesting the certificate (DNS validation)
 
-1. In ACM, choose **Request → Public certificate**.
-2. Add both names: `example.com` and `*.example.com`.
-3. Pick **DNS validation** — ACM gives you a CNAME record per name to add at your DNS provider. Once those records resolve, ACM validates and the status flips to **Issued**. DNS validation also lets ACM **auto-renew** the certificate as long as the records stay in place.
+1. **Switch to the `us-east-1` (N. Virginia) region** — use the Region selector in the top-right. The certificate must be created here so CloudFront can use it.
+2. In ACM, choose **Request → Public certificate**.
+3. Add both names: `example.com` and `*.example.com`.
+4. Pick **DNS validation** — ACM gives you a CNAME record per name to add at your DNS provider. Once those records resolve, ACM validates and the status flips to **Issued**. DNS validation also lets ACM **auto-renew** the certificate as long as the records stay in place.
 
 ![ACM certificate detail — both the root domain and the wildcard validated](docs/images/acm-certificate-detail.png)
 
