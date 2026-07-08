@@ -485,7 +485,7 @@ A key thing about a VPC is that every resource inside it can talk to every other
 
 For this project we create our own dedicated VPC. One thing worth noting: the **EKS control plane** runs in a **separate, AWS-managed VPC** that we don't see or control. Only the **data plane** — our worker nodes and the application pods — is deployed into the VPC we create here.
 
-![VPC resource map — the fleetman-prod VPC with its 6 subnets across 4 AZs and 3 route tables](docs/images/vpc-resource-map.png)
+![VPC resource map — the fleetman-prod VPC with its 8 subnets (4 public + 4 private) across 4 AZs and 3 route tables](docs/images/vpc-resource-map.png)
 
 ### Subnets, CIDR and Availability Zones
 
@@ -494,9 +494,9 @@ A subnet is a smaller slice of the VPC's IP range. Two ideas make this clearer:
 - **CIDR block** — the range of private IP addresses a network owns. Our VPC is given the CIDR `10.2.0.0/16`, which covers `10.2.0.0` – `10.2.255.255` (around 65,000 addresses). Every subnet then carves out a smaller piece of this range.
 - **Availability Zone (AZ)** — a physically separate data centre within the region. Each subnet lives in exactly one AZ. Spreading subnets across multiple AZs (`us-east-1a`, `1b`, `1c`, `1d`) gives high availability — if one AZ goes down, resources in the others keep running.
 
-We split the VPC range into public and private subnets, each a `/24` block (256 addresses):
+We split the VPC range into public and private subnets — **4 public and 4 private** (one of each per AZ), each a `/24` block (256 addresses):
 
-**Public subnets (2)** — `10.2.1.0/24` and `10.2.2.0/24`. A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. Resources here can be given a **public IP** (in addition to their private IP), which is the address the outside world uses to reach them. We use these subnets for the **load balancer** and the **NAT gateway**. Because the load balancer sits in a public subnet, it is internet-facing and gets a **public DNS name** (and public IP) — this is the entry point users actually hit from the internet, and it then forwards the traffic inward to the pods running in the private subnets. (Two public subnets are used, in two different AZs, because an internet-facing load balancer needs a subnet in each AZ it serves.)
+**Public subnets (4)** — `10.2.1.0/24`, `10.2.2.0/24`, `10.2.3.0/24`, and `10.2.4.0/24` (one per AZ). A public subnet has a route to the internet through the internet gateway, so resources here can be reached from the internet and can reach out to it. Resources here can be given a **public IP** (in addition to their private IP), which is the address the outside world uses to reach them. We use these subnets for the **load balancer** and the **NAT gateway**. Because the load balancer sits in a public subnet, it is internet-facing and gets a **public DNS name** (and public IP) — this is the entry point users actually hit from the internet, and it then forwards the traffic inward to the pods running in the private subnets. (A public subnet is created in **every AZ**, because an internet-facing load balancer needs a subnet in each AZ where its target pods run — otherwise a pod in an uncovered AZ is unreachable.)
 
 **Private subnets (4)** — `10.2.10.0/24`, `10.2.11.0/24`, `10.2.12.0/24`, `10.2.13.0/24`. A private subnet has **no** direct route to the internet. Resources here only get a **private IP** (an address that is only reachable from inside the VPC) and no public IP, so nothing on the internet can address them directly. This is where the **EKS worker nodes and the application pods run**, and the **Amazon MQ (ActiveMQ) broker is also deployed here** in a private subnet. Keeping them private is more secure — incoming traffic has to go through the load balancer in the public subnet first, and outbound traffic goes out via the NAT gateway.
 
