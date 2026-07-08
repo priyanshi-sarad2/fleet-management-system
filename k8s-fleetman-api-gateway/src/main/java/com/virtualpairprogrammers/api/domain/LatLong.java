@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 public class LatLong
 {
 	private BigDecimal lat;
-	private BigDecimal lng;;
+	private BigDecimal lng;
 	
 	public BigDecimal getLat() {
 		return lat;

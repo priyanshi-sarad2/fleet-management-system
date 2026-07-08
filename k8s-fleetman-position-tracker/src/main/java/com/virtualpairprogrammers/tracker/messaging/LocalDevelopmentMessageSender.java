@@ -70,7 +70,7 @@ public class LocalDevelopmentMessageSender
 				                                         .withLng(newLng)
 				                                         .withTimestamp(new java.util.Date()).build();
 		lastPositions[randomVehicleIndex] = newPosition;
-		sendMessageToEmbeddedQueue(lastPosition);
+		sendMessageToEmbeddedQueue(newPosition);
 	}
 
 	private void sendMessageToEmbeddedQueue(VehiclePosition position) {

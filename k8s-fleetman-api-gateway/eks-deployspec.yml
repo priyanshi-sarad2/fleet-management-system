@@ -22,7 +22,7 @@ phases:
       - test -d "$HELM_CHART_PATH"
       - echo "Configuring kubeconfig..."
 
-      # I have used this command to generate kubeconfig gor my eks cluster as well
+      # Generate the kubeconfig for the EKS cluster
       - aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME" 
       # this command creates a kubeconfig file in the home directory of the user running the command. In this case, it is the CodeBuild user.
 

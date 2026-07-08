@@ -99,11 +99,11 @@ variable "app" {
   type        = string
   default     = null
 }
-variable "codestart_connection_name" {
+variable "codestar_connection_name" {
   description = "Codestart connection name"
   type        = string
 }
-variable "codestart_connection_provider_type" {
+variable "codestar_connection_provider_type" {
   description = "Codestart connection name"
   type        = string
   default     = null
@@ -129,7 +129,7 @@ variable "env_files_s3_key" {
   type    = string
   default = "null"
 }
-variable "codestart_connection_gitlab_host_arn" {
+variable "codestar_connection_gitlab_host_arn" {
   type        = string
   default     = null
   description = "GitLab host ARN (required if connection_arn is not provided)"

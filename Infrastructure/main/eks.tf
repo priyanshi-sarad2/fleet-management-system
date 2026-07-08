@@ -97,16 +97,9 @@ module "eks" {
     # Optional extra static entries from tfvars (principals known ahead of time)
     var.eks_access_entries
   )
-  /*
-  Important: By setting the "enable_cluster_creator_admin_permissions" to "true" - I gave "devops" user admin access to this EKS cluster via EKS Access Entry.
-
-  But the root user of my AWS account - does not have admin access to this EKS cluster - even though it has admin access to AWS account.
-
-  So, I need to give root user admin access to this EKS cluster via EKS Access Entry. I need to create an EKS Access Entry for it.
-
-  ADDING additional users - If we want to give access to any other IAM user/role to access this EKS cluster - we can add them here.
-
-  */
+  # Access entries are merged from: the account-root admin (local, below), entries for
+  # resources created in this layer (e.g. the CodePipeline role), and any static entries
+  # from tfvars. Add further IAM principals here to grant them cluster access.
 
   eks_endpoint_private_access      = var.eks_endpoint_private_access
   eks_endpoint_public_access       = var.eks_endpoint_public_access

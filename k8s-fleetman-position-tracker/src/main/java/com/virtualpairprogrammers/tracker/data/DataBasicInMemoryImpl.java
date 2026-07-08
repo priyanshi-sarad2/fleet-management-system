@@ -52,7 +52,7 @@ public class DataBasicInMemoryImpl implements Data
 			positionDatabase.put(vehicleName, positions);
 		}
 		BigDecimal speed = calculateSpeedInMph(vehicleName, data);
-		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePostion(data).withSpeed(speed).build();
+		VehiclePosition vehicleWithSpeed = new VehicleBuilder().withVehiclePosition(data).withSpeed(speed).build();
 		positions.add(vehicleWithSpeed);
 	}
 	

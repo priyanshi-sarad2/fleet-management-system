@@ -53,7 +53,7 @@ public class VehicleBuilder
 		return this.withLng(new BigDecimal(lng));
 	}
 
-	public VehicleBuilder withVehiclePostion(VehiclePosition data) {
+	public VehicleBuilder withVehiclePosition(VehiclePosition data) {
 		this.name = data.getName();
 		this.lat = data.getLat();
 		this.lng = data.getLongitude();

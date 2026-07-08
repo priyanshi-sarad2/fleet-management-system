@@ -270,24 +270,6 @@ variable "enable_irsa" {
   default     = true
 }
 
-variable "create_irsa_ebs_csi_driver_iam_role" {
-  description = "Controls if the IRSA IAM role for the Amazon EBS CSI driver should be created"
-  type        = bool
-  default     = false
-}
-
-variable "create_eks_ebs_csi_driver_addon" {
-  description = "Controls if the Amazon EBS CSI Driver EKS add-on should be created"
-  type        = bool
-  default     = false
-}
-
-variable "eks_ebs_csi_driver_addon_version" {
-  description = "Version of the Amazon EBS CSI Driver EKS add-on"
-  type        = string
-  default     = null
-}
-
 variable "openid_connect_audiences" {
   description = "Extra OIDC audiences to include on the IAM OIDC provider (sts.amazonaws.com is always included)"
   type        = list(string)
@@ -318,12 +300,6 @@ variable "ecr_retention_count" {
   description = "Number of most recent images to keep in each ECR repository (older ones are expired by the lifecycle policy)"
   type        = number
   default     = 1
-}
-
-variable "create_aws_prometheus_adot_writer_ecr" {
-  description = "Controls whether the ECR repository for the AWS Prometheus ADOT writer image should be created"
-  type        = bool
-  default     = false
 }
 
 ######## Amazon MQ ########
@@ -425,130 +401,6 @@ variable "node_group_inputs_validation" {
     )
     error_message = "When create_eks_cluster=true, you must set node_group_instance_types, node_group_min_size, node_group_max_size, node_group_desired_size, and node_group_ebs_disk_size (typically via prod-terraform.tfvars)."
   }
-}
-
-######## Monitoring ########
-
-variable "setup_eks_cluster_monitoring" {
-  description = "Controls whether AMP resources and the ADOT writer IRSA role should be created for EKS monitoring"
-  type        = bool
-  default     = false
-}
-
-variable "prometheus_workspace_alias" {
-  description = "Optional friendly name for the AMP workspace. If null, a name is derived from project and environment."
-  type        = string
-  default     = null
-}
-
-variable "prometheus_retention_period_in_days" {
-  description = "Number of days to retain Prometheus metrics in the AMP workspace"
-  type        = number
-  default     = null
-}
-
-variable "prometheus_cloudwatch_log_group_retention_in_days" {
-  description = "Number of days to retain AMP CloudWatch log events"
-  type        = number
-  default     = 30
-}
-
-variable "prometheus_resource_policy_statements" {
-  description = "Optional custom AMP workspace resource policy statements. Leave null to use the defaults configured in monitoring.tf."
-  type = map(object({
-    sid           = optional(string)
-    actions       = optional(list(string))
-    not_actions   = optional(list(string))
-    effect        = optional(string, "Allow")
-    resources     = optional(list(string))
-    not_resources = optional(list(string))
-    principals = optional(list(object({
-      type        = string
-      identifiers = list(string)
-    })))
-    not_principals = optional(list(object({
-      type        = string
-      identifiers = list(string)
-    })))
-    condition = optional(list(object({
-      test     = string
-      variable = string
-      values   = list(string)
-    })))
-  }))
-  default = null
-}
-
-variable "create_grafana" {
-  description = "Controls whether the Amazon Managed Grafana workspace should be created"
-  type        = bool
-  default     = false
-}
-
-variable "create_workspace" {
-  description = "Controls whether the Amazon Managed Grafana workspace resource should be created"
-  type        = bool
-  default     = false
-}
-
-variable "grafana_version" {
-  description = "Grafana version to use for the Amazon Managed Grafana workspace"
-  type        = string
-  default     = "10.4"
-}
-
-variable "grafana_workspace_name" {
-  description = "Name of the Amazon Managed Grafana workspace"
-  type        = string
-  default     = null
-}
-
-variable "grafana_workspace_description" {
-  description = "Description of the Amazon Managed Grafana workspace"
-  type        = string
-  default     = null
-}
-
-variable "grafana_account_access_type" {
-  description = "The type of account access for the Grafana workspace. Valid values are CURRENT_ACCOUNT and ORGANIZATION"
-  type        = string
-  default     = "CURRENT_ACCOUNT"
-}
-
-variable "grafana_permission_type" {
-  description = "Permission model for the Grafana workspace. Valid values are SERVICE_MANAGED and CUSTOMER_MANAGED"
-  type        = string
-  default     = "SERVICE_MANAGED"
-}
-
-variable "grafana_authentication_providers" {
-  description = "Authentication providers for the Grafana workspace. Valid values are AWS_SSO, SAML, or both"
-  type        = list(string)
-  default     = ["AWS_SSO"]
-}
-
-variable "grafana_data_sources" {
-  description = "AWS data sources to enable in the Grafana workspace"
-  type        = list(string)
-  default     = ["PROMETHEUS"]
-}
-
-variable "grafana_network_access_control" {
-  description = "Network access control configuration for the Grafana workspace"
-  type        = any
-  default     = {}
-}
-
-variable "grafana_role_associations" {
-  description = "Map of Grafana workspace roles to IAM Identity Center user/group IDs"
-  type        = any
-  default     = {}
-}
-
-variable "associate_license" {
-  description = "Whether to associate a Grafana Enterprise license with the workspace"
-  type        = bool
-  default     = false
 }
 
 ######## CodePipeline ########

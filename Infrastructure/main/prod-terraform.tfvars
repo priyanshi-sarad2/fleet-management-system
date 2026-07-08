@@ -161,8 +161,8 @@ eks_node_group_sg_additional_rules = {
 ##########    Cluster Authentication    ##########
 eks_authentication_mode = "API"
 
-eks_endpoint_private_access      = true # for worker nodes to join
-eks_endpoint_public_access       = true # for me
+eks_endpoint_private_access      = true # so worker nodes can reach the control plane
+eks_endpoint_public_access       = true # public API endpoint (open for demo access; restrict to trusted CIDRs in production)
 eks_endpoint_public_access_cidrs = ["0.0.0.0/0"]
 
 
@@ -177,16 +177,8 @@ custom_oidc_thumbprints         = []
 
 
 ##########    EKS Managed Node Group    ##########
-# node_group_instance_types = ["t3a.medium"]
-# node_group_min_size       = 4
-# node_group_max_size       = 4
-# node_group_desired_size   = 4
-# node_group_ebs_disk_size  = 20
-
-
-# Free-tier-eligible x86 instance (this account can only launch free-tier-eligible types).
-# c7i-flex.large = 2 vCPU / 4 GiB, x86 (matches our amd64 images) -> launches under the free plan.
-# 4 GiB/node fits the 3 JVM apps + CoreDNS + ESO + ALB controller; 2 nodes = 4 vCPU / 8 GiB.
+# c7i-flex.large = 2 vCPU / 4 GiB, x86 (matches the amd64 images).
+# 4 GiB/node comfortably fits the 3 JVM apps + CoreDNS + ESO + ALB controller.
 node_group_instance_types = ["c7i-flex.large"]
 node_group_min_size       = 3
 node_group_max_size       = 3

@@ -177,7 +177,7 @@ The traditional architecture is called a monolith — the entire system is deplo
 
 Microservices are about modularity and isolation — we break the entire system into self-contained, isolated components.
 
-- Each microservice has separate code in a separate repo, and can be developed, deployed, and run on its own.
+- Each microservice is a self-contained codebase that can be developed, deployed, and run on its own. (Microservices *can* live in separate repos; this project keeps them in a single **monorepo** for simplicity — see [CI/CD](#cicd-with-codepipeline).)
 - They can run on their own hardware/server; the good practice is to deploy each microservice as a separate container.
 - A microservice stays self-contained throughout its lifetime — changing the code of one does not affect another, since there's no direct code link or visibility between them.
 - Microservices communicate via REST API calls (and can also pass messages between each other).
@@ -246,7 +246,7 @@ Beyond the tools above, this project depends on a few external accounts/services
 | Variables (`prod-terraform.tfvars`) | The setup is parametrized — **each layer has its own tfvars** holding the values for its Terraform variables (region, CIDRs, names, feature toggles, etc.), so the same code can be reused across environments |
 | Modules | Official [`terraform-aws-modules`](https://github.com/terraform-aws-modules) are used for most resources (VPC, EKS, ECR, IAM); custom modules were written for the rest (e.g. CloudFront, EKS add-ons) |
 | How resources are enabled | Resources are switched on in two ways (detailed in the table below): **boolean toggles** (`create_*`, e.g. `create_vpc`) create a resource when `true`, while **maps/lists** create **one resource per entry** (an empty map/list creates nothing). Either way, parts of the stack can be turned on or off without changing any code |
-| Fully automated (no manual steps) | Nothing is created by hand in the console or CLI — **everything is provisioned through Terraform**. This includes the addons layer: **Helm chart installation** (External Secrets Operator, AWS Load Balancer Controller), **Kubernetes namespace creation**, and **IRSA setup** (the IAM roles for service accounts *and* the service-account annotations that bind them) |
+| Automated with Terraform | Everything is provisioned as code — VPC, EKS, ECR, MQ, CloudFront, CodePipeline, and the addons layer (**Helm charts** for External Secrets Operator + AWS Load Balancer Controller, **namespaces**, and **IRSA** — the IAM roles *and* their service-account annotations). The only by-hand parts are the one-time prerequisites below (the S3 state bucket, the ACM certificate, the MongoDB Atlas cluster, and entering the Secrets Manager values) |
 
 **How resources are enabled**
 
@@ -367,7 +367,7 @@ The Terraform is split into **two independently-applied layers**, each with its 
 
 **Why split them?** The addons layer configures the **`kubernetes` and `helm` providers**, which need the cluster's API endpoint and auth — and those don't exist until the EKS cluster is created. Pointing those providers at a cluster created in the *same* apply is the classic chicken-and-egg problem (a provider's configuration can't depend on a resource built in the same run). Splitting into layers fixes that: apply **infra** first to build the cluster, then apply **addons** against the now-existing cluster. It also keeps the blast radius small — add-ons can be changed or destroyed without touching the core infrastructure.
 
-And it's all **100% Terraform — no manual `kubectl`, `helm`, or console steps**. The addons layer installs the Helm charts, creates the namespaces, and wires up IRSA (the IAM roles *and* the service-account annotations that bind them) entirely as code.
+The addons layer is **all Terraform — no manual `kubectl` or `helm`**: it installs the Helm charts, creates the namespaces, and wires up IRSA (the IAM roles *and* the service-account annotations that bind them) entirely as code. (The one-time prerequisites — the state bucket, ACM certificate, MongoDB Atlas cluster, and Secrets Manager values — are the only steps done by hand.)
 
 ### Directory Structure
 
@@ -779,7 +779,7 @@ At runtime, the **JRE** executes the bytecode and the **embedded Tomcat** serves
    mvn package          # produces target/fleetman-0.0.1-SNAPSHOT.jar
    ```
 2. Copy that JAR to the server.
-3. Install a **JRE** on the server (e.g. `apt install openjdk-8-jre`).
+3. Install a **JRE** on the server (e.g. `apt install openjdk-21-jre`).
 4. Run it:
    ```bash
    java -jar fleetman-0.0.1-SNAPSHOT.jar   # embedded Tomcat listens on 8080
@@ -796,7 +796,7 @@ Docker packages the **JRE + the JAR + everything the app needs** into a single *
 
 ```dockerfile
 # ---------- Stage 1: build ----------
-FROM maven:3.6.3-jdk-8-slim AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy only the pom first and pre-download dependencies (cached layer).
@@ -808,7 +808,7 @@ COPY src ./src
 RUN mvn -q -B -DskipTests package
 
 # ---------- Stage 2: runtime ----------
-FROM eclipse-temurin:8-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 LABEL org.opencontainers.image.authors="Priyanshi Sarad <itspriyanshisarad@gmail.com>"
 
 # Create a non-root user/group and an app dir it owns (security best practice)
@@ -832,12 +832,12 @@ It's a **multi-stage build** — a heavy "build" stage that compiles the JAR, an
 Why multi-stage: the build tools (Maven, JDK) and source code stay in the build stage and are **thrown away** — only the final jar is carried into the runtime image. This keeps the final image **much smaller**, gives it a **smaller attack surface** (no compilers/source shipped to production), and makes it faster to push and pull.
 
 **Build stage**
-- `FROM maven:3.6.3-jdk-8-slim AS build` — an image with **Maven + JDK**, needed to compile the code.
+- `FROM maven:3.9-eclipse-temurin-21 AS build` — an image with **Maven + JDK**, needed to compile the code.
 - `COPY pom.xml` then `mvn dependency:go-offline` — downloads all dependencies **first**, as its own layer. Docker caches layers, so this only re-runs when `pom.xml` changes — everyday **code edits don't re-download dependencies**, which makes rebuilds fast.
 - `COPY src` then `mvn -DskipTests package` — compiles and builds the fat JAR at `/app/target/*.jar`.
 
 **Runtime stage**
-- `FROM eclipse-temurin:8-jre-alpine` — a tiny **JRE-only Alpine** image: just enough to *run* Java, with no JDK/Maven/source → a small, more secure final image.
+- `FROM eclipse-temurin:21-jre-alpine` — a tiny **JRE-only Alpine** image: just enough to *run* Java, with no JDK/Maven/source → a small, more secure final image.
 - `addgroup`/`adduser` + `USER app` — creates and switches to a **non-root user**, so the app never runs as root (security best practice).
 - `mkdir + chown /app` and `COPY --chown=app:app ...` — the **`app` user owns** both the working directory and the jar.
 - `COPY --from=build .../*.jar app.jar` — copies **only the built jar** from the build stage (no build tooling in the final image) and renames it `app.jar` (the wildcard avoids hardcoding the version).
@@ -1619,8 +1619,8 @@ They land as exactly the env vars the Spring property placeholders expect (`${AC
 
 AWS Certificate Manager (ACM) issues and auto-renews the free **public TLS certificate** that gives our endpoints HTTPS. Fleetman uses a single public certificate that covers the root domain and a wildcard:
 
-- `example.com`
-- `*.example.com`
+- `priyanshiseniordevops.online`
+- `*.priyanshiseniordevops.online`
 
 The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetman-api.*` (API), and `fleetman-alb.*` (ALB origin) — so one certificate secures the whole stack.
 
@@ -1630,7 +1630,7 @@ The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetma
 
 1. **Switch to the `us-east-1` (N. Virginia) region** — use the Region selector in the top-right. The certificate must be created here so CloudFront can use it.
 2. In ACM, choose **Request → Public certificate**.
-3. Add both names: `example.com` and `*.example.com`.
+3. Add both names: `priyanshiseniordevops.online` and `*.priyanshiseniordevops.online`.
 4. Pick **DNS validation** — ACM gives you a CNAME record per name to add at your DNS provider. Once those records resolve, ACM validates and the status flips to **Issued**. DNS validation also lets ACM **auto-renew** the certificate as long as the records stay in place.
 
 ![ACM certificate detail — both the root domain and the wildcard validated](docs/images/acm-certificate-detail.png)
@@ -1911,7 +1911,7 @@ Two pieces do the work in a typical SPA (React shown as the classic example; Ang
 
 ### Step by step: how a SPA loads and navigates
 
-**1. First load (cold load)** — the user opens `https://app.example.com/` (or a deep link like `/users/42`):
+**1. First load (cold load)** — the user opens `https://fleetman.priyanshiseniordevops.online/` (or a deep link like `/users/42`):
 
 ```text
 Browser ── GET / ───────────────▶ Host

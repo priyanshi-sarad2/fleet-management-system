@@ -22,7 +22,7 @@ public class Journey implements Callable<Object>
 	private String vehicleName;
 	private JmsTemplate jmsTemplate;
 	private String queueName;
-    private static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    private final SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 	
 	private static Logger log  = LoggerFactory.getLogger(Journey.class);
 

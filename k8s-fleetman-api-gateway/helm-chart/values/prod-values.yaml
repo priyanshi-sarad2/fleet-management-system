@@ -71,8 +71,6 @@ serviceAccount:
 
 
 # Optional: override app/chart name in resources (defaults to Chart.yaml name)
-# nameOverride: riddhi-gsp-api
-# fullnameOverride: riddhi-gsp-api
 
 
 # Optional: for ECR this is usually NOT needed, so keep it empty

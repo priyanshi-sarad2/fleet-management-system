@@ -2,7 +2,7 @@
 
 ### Creating service account first for External Secrets Operator ###
 # The namespace is already created for it
-# THis service account is annotated with the IRSA role ARN so that the External Secrets Operator can read secrets from Secrets Manager.
+# This service account is annotated with the IRSA role ARN so that the External Secrets Operator can read secrets from Secrets Manager.
 
 module "external_secrets_service_account" {
   source = "../modules/k8s-modules/k8s-namespace/service-account"

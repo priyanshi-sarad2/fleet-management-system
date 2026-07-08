@@ -130,6 +130,6 @@ module "code-pipeline" {
   full_repo_path = var.full_repo_path
   repo_branch    = var.repo_branch
 
-  codestart_connection_name = "${each.key}-${var.env}"
-  connection_arn            = local.github_connection_arn
+  codestar_connection_name = "${each.key}-${var.env}"
+  connection_arn           = local.github_connection_arn
 }
