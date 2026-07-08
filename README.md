@@ -1598,7 +1598,7 @@ The **API Gateway** needs to be exposed to the internet because the **webapp cal
 
 Four pieces make that happen, and we'll build them up in order: the **AWS Load Balancer Controller**, the **Ingress** it reads, the **CloudFront** distribution in front, and finally the **HTTPS/TLS** that secures the whole path.
 
-## 1. The AWS Load Balancer Controller
+## 1. The AWS Load Balancer Controller (a cluster add-on)
 
 Kubernetes doesn't know how to create an AWS load balancer on its own. The **AWS Load Balancer Controller** is the piece that bridges that gap: it runs **as a pod inside the cluster** (installed in the addons layer via Helm, and given ELB/EC2 permissions through **IRSA**). Its whole job is to **watch** the Kubernetes API for `Ingress` (and `Service` type `LoadBalancer`) objects and, whenever it sees one, call the **AWS ELBv2 APIs** to create and continuously reconcile a **real Application Load Balancer** that matches what the object asks for.
 
