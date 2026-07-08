@@ -1,5 +1,30 @@
 # fleet-management-system
 
+## Table of Contents
+
+- [How Each Part Works](#how-each-part-works)
+- [Concepts & Design Decisions](#concepts--design-decisions)
+- [Deployment on AWS EKS](#deployment-on-aws-eks)
+- [Using Terraform for Infra Creation](#using-terraform-for-infra-creation)
+- [VPC](#vpc)
+- [ECR](#ecr)
+- [Deploying the Queue — Amazon MQ](#deploying-the-queue--amazon-mq)
+- [MongoDB Atlas](#mongodb-atlas)
+- [Docker](#docker)
+- [Deploying EKS cluster](#deploying-eks-cluster)
+- [IRSA — IAM Roles for Service Accounts](#irsa--iam-roles-for-service-accounts)
+- [EKS Add-ons](#eks-add-ons)
+- [Deploying to Kubernetes](#deploying-to-kubernetes)
+- [Deploying with Helm](#deploying-with-helm)
+- [Handling environment variables](#handling-environment-variables)
+- [ACM — TLS Certificates](#acm--tls-certificates)
+- [CI/CD with CodePipeline](#cicd-with-codepipeline)
+- [S3 Buckets](#s3-buckets)
+- [Deploying the webapp (CloudFront + S3)](#deploying-the-webapp-cloudfront--s3)
+- [Pod logs with Fluent Bit](#pod-logs-with-fluent-bit)
+
+---
+
 ## About the Project
 
 Fleet Management System is a live vehicle-tracking application for a transport company. Imagine a company that runs delivery trucks (lorries) all over the country — this system tracks where each vehicle is, in real time, as it moves around making deliveries.
@@ -113,6 +138,8 @@ This is the user-facing part — a JavaScript single-page app built with Angular
 - When you select a vehicle, it draws the route history — the path the vehicle took from its start point to its current position.
 - It only communicates with the API Gateway, never with the backend microservices directly.
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # Concepts & Design Decisions
@@ -162,6 +189,8 @@ Each microservice should be highly cohesive and loosely coupled.
   - They are not loosely coupled — any part of the system, and even other systems, can read and write to them.
 - Each microservice should maintain its own database, and only that microservice can read and write to its own data store.
 - Different microservices can use different types of databases (relational, NoSQL/big-data stores, etc.) as best suits their needs.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -295,6 +324,8 @@ We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 | Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) |
 | Queue | [Amazon MQ](#deploying-the-queue--amazon-mq) (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | [MongoDB Atlas](#mongodb-atlas) (managed) |
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -477,6 +508,8 @@ terraform apply -var-file=prod-terraform.tfvars
 
 > **Order matters:** apply **infra → addons**. When tearing down, destroy **addons → infra** (the add-ons need the cluster alive to be removed cleanly).
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # VPC
@@ -533,6 +566,8 @@ A route table is a set of rules that decides where network traffic is sent. Each
 
 ![Private route table routes — 0.0.0.0/0 points to the NAT gateway, 10.2.0.0/16 is local](docs/images/route-table-private.png)
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # ECR
@@ -581,6 +616,8 @@ ECR can scan images for known vulnerabilities (CVEs). I've enabled **Basic scann
 - For deeper, *continuous* scanning of both OS and programming-language packages, AWS offers **Enhanced scanning** (Amazon Inspector) — but that's a **paid** service; Basic is enough for this project.
 
 **Recommendation: always enable Basic scanning** — it's free and an easy security win.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -639,6 +676,8 @@ aws ssm get-parameter \
 
 For the admin password (web console), use `/mq/mq_admin_password` instead. The `--with-decryption` flag is required because the values are stored as encrypted `SecureString`s. The usernames are stored alongside them at `/mq/mq_application_username` and `/mq/mq_admin_username`.
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # MongoDB Atlas
@@ -682,6 +721,8 @@ By adding only this IP to the access list, the Atlas cluster can **only be reach
 **Connecting from your own machine (testing/admin):** the list above only allows the cluster's NAT IP, so your laptop can't connect by default. To connect from where you are now, open **Network Access → IP Access List** and click **"Add Current IP Address"** (highlighted above) — Atlas adds your current public IP to the allowlist.
 
 **Giving developers access:** to let developers connect to Atlas from their own machines, add their IPs to the same list. If your team uses an **office VPN**, just allowlist the **office/VPN egress IP** once — then anyone on the VPN can reach Atlas, without adding each developer's IP individually.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -834,6 +875,8 @@ docker push "$ECR/fleetman-position-tracker:v1"
 
 The image tags start with `v` (e.g. `v1`, `v2`) so they match the ECR **lifecycle policy** (keep the latest 5 `v*`-tagged images).
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # Deploying EKS cluster
@@ -943,6 +986,8 @@ EKS uses **two separate IAM roles** — one for the **control plane** and one fo
 
 So the control plane role is about EKS managing infrastructure for you, while the node role is about the worker machines being able to join the cluster, network the pods, and pull images. (These are different from **IRSA** below, which gives individual *pods* their own roles.)
 
+[⬆ Back to top](#fleet-management-system)
+
 # IRSA — IAM Roles for Service Accounts
 
 **What is IRSA?** IRSA lets a Kubernetes **pod get its own AWS permissions through its ServiceAccount**, instead of borrowing the node's IAM role.
@@ -1027,6 +1072,8 @@ This updates your local kubeconfig (`~/.kube/config`) by adding/updating three t
 
 You can then copy that generated entry into a kubeconfig of your own naming and `export KUBECONFIG=...` in your terminal to make it the active config.
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # EKS Add-ons
@@ -1041,6 +1088,8 @@ The add-ons installed in this cluster:
 - **eks-pod-identity-agent** — lets pods assume IAM roles (pod identity)
 
 Of these, **CoreDNS, kube-proxy, and vpc-cni** are the **default, essential** ones — a cluster basically can't run normally without DNS, node networking, and pod IP assignment. `eks-pod-identity-agent` is added on top, for pod-level IAM access.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -1270,6 +1319,8 @@ kubectl get endpoints fleetman-position-tracker -o wide
 
 If that shows `<none>`, the Service's **selector doesn't match any Ready pods**, so traffic has nowhere to go — a common reason a Service "isn't working".
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # Deploying with Helm
@@ -1341,6 +1392,8 @@ helm upgrade --install fleetman-position-tracker ./helm-chart \
 ```
 
 `upgrade --install` means: install the release if it doesn't exist yet, otherwise upgrade it in place.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -1429,6 +1482,8 @@ For this project's sensitive values I use **AWS Secrets Manager**, since it's pu
 
 ## Using AWS Secrets Manager for sensitive values
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # ACM — TLS Certificates
@@ -1464,6 +1519,8 @@ Fleetman runs everything in **us-east-1** *and* fronts it with CloudFront, so **
 
 - **CloudFront** → certificate in **`us-east-1`** (always).
 - **ALB / API Gateway / other regional services** → certificate in **that resource's own region**.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -1657,6 +1714,8 @@ A pipeline runs automatically on a new commit, or you can start it manually with
 **Release change** button in the CodePipeline console (top-right in the screenshots above). It
 re-pulls the latest commit from the source branch and runs Source → Build → EKSDeploy.
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # S3 Buckets
@@ -1710,6 +1769,8 @@ CodePipeline passes artifacts (source zip, build output) between stages through 
 
 - Expire current objects after ~7 days (only needed during a run).
 - Expire noncurrent versions after 1 day and abort incomplete multipart uploads after 1 day.
+
+[⬆ Back to top](#fleet-management-system)
 
 ---
 
@@ -1876,6 +1937,8 @@ When you ship a new version of the site, you tell CloudFront to **invalidate** t
 
 The S3 bucket and CloudFront distribution are provisioned with **Terraform** (`Infrastructure/`), and new changes deploy automatically via **AWS CodePipeline** (Source → Build → S3 → CloudFront invalidate).
 
+[⬆ Back to top](#fleet-management-system)
+
 ---
 
 # Pod logs with Fluent Bit
@@ -1999,3 +2062,5 @@ The Helm chart is told to **use this pre-created service account** (`serviceAcco
 ## Note on EKS control-plane logs
 
 This is separate from **EKS control-plane logging** (`api`, `audit`, `authenticator`), which EKS would ship to `/aws/eks/<cluster>/cluster`. We keep that **disabled** (`eks_cluster_enabled_log_types = []`) to avoid high-volume, costly audit logs — Fluent Bit covers the application logs we actually want.
+
+[⬆ Back to top](#fleet-management-system)
