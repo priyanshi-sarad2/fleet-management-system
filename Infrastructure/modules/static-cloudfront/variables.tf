@@ -89,8 +89,18 @@ variable "cached_methods" {
   type        = list(string)
 }
 variable "cookies_forward" {
-  description = "How CloudFront forwards cookies to the origin (none/whitelist/all)"
+  description = "How CloudFront forwards cookies to the origin (none/whitelist/all). Use \"none\" for a static site."
   type        = string
+}
+variable "query_string" {
+  description = "Whether query strings are part of the cache key / forwarded to the origin. Use false for a static site."
+  type        = bool
+  default     = false
+}
+variable "headers" {
+  description = "List of request headers included in the cache key / forwarded to the origin. Empty list = none (recommended for a static site)."
+  type        = list(string)
+  default     = []
 }
 
 ########   SPA error page fallback   ########

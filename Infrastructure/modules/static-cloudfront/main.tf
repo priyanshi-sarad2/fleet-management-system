@@ -20,6 +20,47 @@ resource "aws_cloudfront_origin_access_control" "cloudfront-distribution-OAC" {
 }
 
 
+# Cache policy for the static site (modern replacement for the deprecated
+# `forwarded_values` block). Everything about the cache key is driven from the
+# per-origin tfvars values, so it stays controllable in one place:
+#   - query strings : var.query_string   (false => "none")
+#   - headers        : var.headers        ([]    => "none")
+#   - cookies        : var.cookies_forward ("none")
+# TTLs come from var.min/default/max_ttl. gzip + brotli are enabled so the edge
+# can serve compressed text assets (HTML/JS/CSS).
+resource "aws_cloudfront_cache_policy" "static" {
+  name    = "${var.name}-${var.env}-${var.app}-static-cache"
+  comment = "Cache policy for ${var.app} (${var.env}) static site"
+
+  min_ttl     = var.min_ttl
+  default_ttl = var.default_ttl
+  max_ttl     = var.max_ttl
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_gzip   = true
+    enable_accept_encoding_brotli = true
+
+    query_strings_config {
+      query_string_behavior = var.query_string ? "all" : "none"
+    }
+
+    headers_config {
+      header_behavior = length(var.headers) > 0 ? "whitelist" : "none"
+
+      dynamic "headers" {
+        for_each = length(var.headers) > 0 ? [1] : []
+        content {
+          items = var.headers
+        }
+      }
+    }
+
+    cookies_config {
+      cookie_behavior = var.cookies_forward
+    }
+  }
+}
+
 # CloudFront Distribution
 resource "aws_cloudfront_distribution" "cloudfront-distribution" {
 
@@ -41,19 +82,14 @@ resource "aws_cloudfront_distribution" "cloudfront-distribution" {
     cached_methods   = var.cached_methods
     target_origin_id = local.cloudfront_origin_id
 
-    forwarded_values {
-      query_string = true
-
-      cookies {
-        forward = var.cookies_forward
-      }
-    }
-
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = var.min_ttl
-    default_ttl            = var.default_ttl
-    max_ttl                = var.max_ttl
     compress               = true
+
+    # Modern cache policy (replaces the deprecated forwarded_values + inline
+    # TTLs, which are mutually exclusive with cache_policy_id). For a static SPA
+    # the policy keeps the cache key to just the URL path (query strings /
+    # headers / cookies all "none" via tfvars) to maximise the cache hit ratio.
+    cache_policy_id = aws_cloudfront_cache_policy.static.id
   }
 
 

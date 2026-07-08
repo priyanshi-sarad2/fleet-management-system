@@ -1935,7 +1935,88 @@ When you ship a new version of the site, you tell CloudFront to **invalidate** t
 
 ### Provisioning & deploys
 
-The S3 bucket and CloudFront distribution are provisioned with **Terraform** (`Infrastructure/`), and new changes deploy automatically via **AWS CodePipeline** (Source → Build → S3 → CloudFront invalidate).
+The S3 bucket and CloudFront distribution are provisioned with **Terraform** — the reusable distribution lives in `Infrastructure/modules/static-cloudfront/`, it's called from `Infrastructure/main/cloudfront.tf` (module `cloudfront_static`), and every per-app setting is declared in `Infrastructure/main/prod-terraform.tfvars` under `cloudfront_s3_origins`. New code deploys automatically via **AWS CodePipeline** (Source → Build → S3 → CloudFront invalidate).
+
+The rest of this section walks through the distribution **setting by setting**, mapping each Terraform value to what it looks like in the CloudFront console.
+
+### The distribution at a glance
+
+![CloudFront distribution overview — alternate domain, ACM certificate, TLS policy and default root object](docs/images/cloudfront-distribution-overview.png)
+
+The key details on the distribution:
+
+- **Alternate domain name** `fleetman.priyanshiseniordevops.online` — the friendly URL users hit, set from `domain` in tfvars (`aliases` on the distribution). Without this, the site would only be reachable on the ugly `*.cloudfront.net` name.
+- **Custom SSL certificate** — the ACM certificate that terminates HTTPS. It **must live in `us-east-1`** because CloudFront is a global service that only reads certs from that region (covered in [ACM](#acm--tls-certificates)). It's a wildcard cert, so the same one covers this webapp and the API.
+- **Security policy `TLSv1.2_2021`** — the minimum TLS version viewers may negotiate; older, weaker protocols are refused.
+- **Default root object `index.html`** — when someone requests the bare domain (`/`), CloudFront serves `index.html` (the SPA app shell) instead of returning a directory listing. Set from `root_object` in tfvars.
+- **Price class "North America and Europe"** — limits which edge locations are used (`PriceClass_100`), trading some global reach for lower cost. Set from `price_class` in tfvars.
+
+> The **ARN is blurred** because it embeds the AWS account ID.
+
+### Origin: a private S3 bucket locked to CloudFront (OAC)
+
+![CloudFront origin — S3 regional domain with Origin Access Control (recommended)](docs/images/cloudfront-origin-oac.png)
+
+- **Origin domain** is the bucket's **regional** S3 endpoint (`fleetman-webapp-prod.s3.us-east-1.amazonaws.com`), wired from the S3 module's output.
+- **Origin access** is set to **Origin access control settings (recommended)** with the OAC `fleetman-webapp-prod-oac`. This is the important bit: the bucket has **Block Public Access on and no public policy**, so it can't be read from the internet directly. CloudFront signs each origin request with SigV4 using the OAC, and a **bucket policy allows only this one distribution** to read the objects. Users can never bypass CloudFront and hit S3 directly.
+
+In Terraform the OAC is the `aws_cloudfront_origin_access_control` resource in the module, and the "only this distribution can read the bucket" rule is the separate `Infrastructure/modules/s3-bucket-policy` module.
+
+### Behavior: viewer settings
+
+![CloudFront default behavior — redirect HTTP to HTTPS, allowed methods GET/HEAD/OPTIONS, compression on](docs/images/cloudfront-behavior-settings.png)
+
+The **default behavior** (`Default (*)` path pattern) applies to every request, since a static site needs only one behavior:
+
+- **Viewer protocol policy: Redirect HTTP to HTTPS** — anyone arriving on `http://` is bounced to `https://`, so the site is always encrypted end-to-end.
+- **Allowed HTTP methods: GET, HEAD, OPTIONS** (cached: GET, HEAD) — a static site is read-only, so write methods (PUT/POST/DELETE) are simply not allowed. `OPTIONS` is included for CORS preflight requests. Set from `allowed_methods` / `cached_methods` in tfvars.
+- **Compress objects automatically: Yes** — CloudFront gzips/brotli-compresses text assets (HTML, JS, CSS) on the fly, which makes the app download faster. (This is the **opposite** of the API distribution, where compression is turned **off** so it doesn't break the WebSocket upgrade — different workloads, different rules.)
+
+### Cache key: why Headers, Query strings and Cookies are all "None"
+
+This is the setting we deliberately tuned. On the same behavior, the **cache key** is controlled by a **custom cache policy** — the modern, AWS-recommended approach (the console shows **"Cache policy and origin request policy (recommended)"**, not the deprecated *Legacy cache settings*):
+
+![CloudFront behavior using the custom cache policy fleetman-prod-fleetman-webapp-static-cache](docs/images/cloudfront-cache-policy.png)
+
+The attached policy `fleetman-prod-fleetman-webapp-static-cache` is created by Terraform (`aws_cloudfront_cache_policy`) and keeps **headers, query strings, and cookies all `None`** (click **"View policy"** in the console to see them). All three are controlled **per-origin from `prod-terraform.tfvars`**, so they're easy to change in one place:
+
+```hcl
+cloudfront_s3_origins = {
+  "fleetman-webapp" = {
+    # ...
+    # Cache-key controls: static SPA -> keep all three "none" for max cache hits
+    cookies_forward = "none" # cookies not in cache key
+    query_string    = false  # query strings not in cache key
+    headers         = []     # no headers in cache key ("none")
+  }
+}
+```
+
+**What the "cache key" is:** it's the fingerprint CloudFront uses to decide whether two requests are "the same." Anything you add to the cache key creates a **separate cached copy per unique value**. For a static SPA the response depends **only on the URL path** — the files (`index.html`, JS, CSS, images) are byte-for-byte identical for everyone — so nothing else belongs in the key:
+
+| Component | Setting | Why `None` for a static SPA |
+|---|---|---|
+| **Query strings** | `query_string = false` | `index.html` is identical whether the URL is `/` or `/?utm_source=x`. If query strings were in the key, every tracking/cache-buster param (`?utm_...`, random values) would be treated as a brand-new object and re-fetched from S3 — killing the hit ratio for an identical response. |
+| **Cookies** | `cookies_forward = "none"` | There's no server-side session here; S3 just hands back a file. Caching on cookies would create a distinct copy **per browser/user**, so the cache would almost never hit — and it would needlessly leak cookies to the origin. |
+| **Headers** | `headers = []` | The file doesn't vary by request headers, so caching on e.g. `User-Agent` would fork the cache into thousands of near-identical copies. None belong in the key. |
+
+**Net effect:** with all three `None`, the cache key is **just the path**. One visitor anywhere in a region warms that edge cache, and every subsequent viewer worldwide is served from CloudFront instead of S3 — the **highest possible hit ratio, lowest latency, and lowest S3 cost**.
+
+> **Contrast with the API distribution**, where we did the exact opposite on purpose: caching is fully disabled and it forwards everything, because API responses are dynamic and per-request. A static webapp is the mirror image — cache aggressively, key on nothing but the path.
+
+**Object caching (the TTLs)** — the cache policy also sets how long an edge keeps a file before checking the origin again: **Min 0 / Default 3600s (1 h) / Max 86400s (1 day)** (`min_ttl` / `default_ttl` / `max_ttl`, still set per-origin). Because CodePipeline runs a **CloudFront invalidation** on every deploy, viewers get the new build immediately rather than waiting for the TTL to expire.
+
+> **Modern, not legacy:** the module uses a **custom cache policy** (`aws_cloudfront_cache_policy`) instead of the deprecated `forwarded_values` block. It's built from the same tfvars values above (so query strings / headers / cookies stay controllable in one place), keeps the custom TTLs, and enables **Gzip + Brotli** compression.
+
+### SPA fallback: turn the S3 "403" into index.html
+
+![CloudFront custom error response — 403 remapped to /index.html with a 200 response](docs/images/cloudfront-error-response.png)
+
+A private S3 bucket returns **403 Forbidden** for any key it doesn't have. For a normal site that's fine, but an SPA can be deep-linked (e.g. a user refreshes on an app route, or opens a bookmark). Those paths aren't real files in the bucket, so S3 answers 403 and the user would see an error instead of the app.
+
+The fix is a **custom error response**: CloudFront catches the **403**, serves **`/index.html`**, and returns it with a **200 OK**. The SPA's in-browser router then reads the URL and renders the right screen — so deep links and refreshes "just work." This is driven by `enable_error_page` / `error_code` in tfvars and the `custom_error_response` block in the module.
+
+> Fleetman itself is a single-view SPA with no extra routes, so it rarely 403s in practice — but this is the correct, standard configuration for hosting any SPA on S3 + CloudFront, and it's in place here.
 
 [⬆ Back to top](#fleet-management-system)
 

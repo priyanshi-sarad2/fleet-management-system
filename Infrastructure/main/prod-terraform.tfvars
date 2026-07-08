@@ -28,12 +28,17 @@ cloudfront_alb_origins = {
 
 cloudfront_s3_origins = {
   "fleetman-webapp" = {
-    domain            = "fleetman.priyanshiseniordevops.online"
-    root_object       = "index.html"
-    price_class       = "PriceClass_100" # US, Canada, Europe only
-    allowed_methods   = ["GET", "HEAD", "OPTIONS"]
-    cached_methods    = ["GET", "HEAD"]
-    cookies_forward   = "none"
+    domain          = "fleetman.priyanshiseniordevops.online"
+    root_object     = "index.html"
+    price_class     = "PriceClass_100" # US, Canada, Europe only
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+
+    # Cache-key controls: static SPA -> keep all three "none" for max cache hits
+    cookies_forward = "none" # cookies not in cache key
+    query_string    = false  # query strings not in cache key
+    headers         = []     # no headers in cache key ("none")
+
     enable_error_page = true
     error_code        = 403
   }

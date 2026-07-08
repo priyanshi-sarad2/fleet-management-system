@@ -115,7 +115,11 @@ variable "cloudfront_s3_origins" {
     price_class     = optional(string, "PriceClass_100")
     allowed_methods = optional(list(string), ["GET", "HEAD", "OPTIONS"])
     cached_methods  = optional(list(string), ["GET", "HEAD"])
-    cookies_forward = optional(string, "none")
+
+    # Cache-key controls - default to "none" (best practice for a static SPA)
+    cookies_forward = optional(string, "none")   # none / whitelist / all
+    query_string    = optional(bool, false)      # false = not in cache key
+    headers         = optional(list(string), []) # [] = no headers in cache key
 
     # SPA fallback (private S3 returns 403 for unknown paths -> serve the root object)
     enable_error_page = optional(bool, true)

@@ -9,16 +9,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import com.virtualpairprogrammers.simulator.journey.JourneySimulator;
 
 /**
- * Written for the Microservices course, this is a toy application which simulates the progress
- * of vehicles on a delivery route. The program reads from one or more text files containing
- * a list of lat/long positions (these can be created from .gpx files or similar).
- * 
- * Messages are then sent on to a queue (currently hardcoded as positionQueue - to be fixed on 
- * the course!)
- * 
- * Intended for use on the training videos, questions to contact@virtualpairprogrammers.com
- * 
- * @author Richard Chesterwood
+ * A toy application which simulates the progress of vehicles on a delivery route.
+ * The program reads from one or more text files containing a list of lat/long
+ * positions (these can be created from .gpx files or similar).
+ *
+ * Messages are then sent on to a queue (currently hardcoded as positionQueue).
  */
 @SpringBootApplication
 public class PositionsimulatorApplication {

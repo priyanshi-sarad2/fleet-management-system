@@ -67,7 +67,11 @@ module "cloudfront_static" {
 
   allowed_methods = each.value.allowed_methods
   cached_methods  = each.value.cached_methods
+
+  # Cache-key controls (all "none" for a static SPA) - set per-origin in tfvars
   cookies_forward = each.value.cookies_forward
+  query_string    = each.value.query_string
+  headers         = each.value.headers
 
   # SPA fallback: a private S3 bucket returns 403 for unknown paths -> serve index.html
   enable_error_page   = each.value.enable_error_page

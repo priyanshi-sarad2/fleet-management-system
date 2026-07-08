@@ -65,8 +65,7 @@ public class Journey implements Callable<Object>
 	}
 
 	/**
-	 * Sends a message to the position queue - we've hardcoded this in at present - of course
-	 * this needs to be fixed on the course!
+	 * Sends a message to the position queue (currently hardcoded).
 	 * @param positionMessage
 	 * @throws InterruptedException 
 	 */

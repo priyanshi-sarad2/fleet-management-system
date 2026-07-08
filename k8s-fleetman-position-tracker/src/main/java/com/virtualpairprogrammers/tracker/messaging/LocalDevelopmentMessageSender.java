@@ -21,8 +21,6 @@ import com.virtualpairprogrammers.tracker.domain.VehiclePosition;
 /**
  * Whilst running standalone, we send some random chaotic vehicle positions
  * to the embedded queue.
- * @author Richard Chesterwood
- *
  */
 @Profile("standalone")
 @Component
