@@ -242,7 +242,7 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | CloudFront | CDN in front of both the webapp and the API Gateway |
 | [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | SSM Parameter Store | Stores Amazon MQ's auto-generated broker credentials |
-| ACM (public certificate) | Public TLS certificate (root domain + wildcard, in `us-east-1`) for HTTPS — used by CloudFront and the ALB |
+| [ACM (public certificate)](#acm--tls-certificates) | Public TLS certificate (root domain + wildcard, in `us-east-1`) for HTTPS — used by CloudFront and the ALB |
 | DNS (Route 53 / Namecheap) | Hosts the domain's records; this project uses Namecheap (Route 53 is also supported) |
 | [CodePipeline](#cicd-with-codepipeline) | CI/CD — builds the service images and deploys them to the cluster |
 | CloudWatch (Logs) | Central logging — Fluent Bit ships pod logs here (`/aws/eks/fleetman/<app>`) |
