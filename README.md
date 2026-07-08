@@ -238,7 +238,7 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | [Docker](#docker) | Containerizes each service into an image (built in CI and pushed to ECR) |
 | [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
 | Load Balancer | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
-| S3 | Object storage — webapp static site (with CloudFront/OAC), CodePipeline artifacts, and the Terraform state bucket |
+| [S3](#s3-buckets) | Object storage — webapp static site (with CloudFront/OAC), CodePipeline artifacts, and the Terraform state bucket |
 | CloudFront | CDN in front of both the webapp and the API Gateway |
 | [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | SSM Parameter Store | Stores Amazon MQ's auto-generated broker credentials |
@@ -279,12 +279,13 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 
 #### S3
 
-We need two S3 buckets:
+We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 
 | Bucket | Purpose | Created by |
 |--------|---------|-----------|
-| `fleetman-tf-state` | Stores the Terraform state file | Manually (it must already exist before Terraform can use it as its backend) |
-| `fleetman-codepipeline-artifacts` | Stores the artifacts passed between the stages of the AWS CodePipeline | Terraform |
+| `fleetman-terraform123` | Stores the Terraform state file | Manually (must exist before Terraform can use it as its backend) |
+| `fleet-management-system-codepipeline-artifacts-prod` | Artifacts passed between AWS CodePipeline stages | Terraform |
+| `fleetman-webapp-prod` | Hosts the built Angular webapp (served via CloudFront) | Terraform |
 
 #### How Each Service Is Deployed
 
@@ -1434,8 +1435,8 @@ For this project's sensitive values I use **AWS Secrets Manager**, since it's pu
 
 AWS Certificate Manager (ACM) issues and auto-renews the free **public TLS certificate** that gives our endpoints HTTPS. Fleetman uses a single public certificate that covers the root domain and a wildcard:
 
-- `priyanshiseniordevops.online`
-- `*.priyanshiseniordevops.online`
+- `example.com`
+- `*.example.com`
 
 The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetman-api.*` (API), and `fleetman-alb.*` (ALB origin) — so one certificate secures the whole stack.
 
@@ -1444,10 +1445,8 @@ The wildcard covers every subdomain we serve — `fleetman.*` (webapp), `fleetma
 ## Requesting the certificate (DNS validation)
 
 1. In ACM, choose **Request → Public certificate**.
-2. Add both names: `priyanshiseniordevops.online` and `*.priyanshiseniordevops.online`.
+2. Add both names: `example.com` and `*.example.com`.
 3. Pick **DNS validation** — ACM gives you a CNAME record per name to add at your DNS provider. Once those records resolve, ACM validates and the status flips to **Issued**. DNS validation also lets ACM **auto-renew** the certificate as long as the records stay in place.
-
-In this project the certificate is created **outside Terraform** — the tfvars sets `create_acm_certificate = false` and points at the existing cert ARN — so it must already exist and be **Issued** before you `terraform apply`.
 
 ![ACM certificate detail — both the root domain and the wildcard validated](docs/images/acm-certificate-detail.png)
 
@@ -1653,6 +1652,56 @@ log stream.
 A pipeline runs automatically on a new commit, or you can start it manually with the
 **Release change** button in the CodePipeline console (top-right in the screenshots above). It
 re-pulls the latest commit from the source branch and runs Source → Build → EKSDeploy.
+
+---
+
+# S3 Buckets
+
+Amazon S3 is object storage. This project uses **three private buckets**:
+
+- **Terraform state** — `fleetman-terraform123` (created by hand, before `terraform init`)
+- **CodePipeline artifacts** — `fleet-management-system-codepipeline-artifacts-prod` (created by Terraform)
+- **Webapp static site** — `fleetman-webapp-prod` (created by Terraform; served via CloudFront, covered in [Deploying the webapp](#deploying-the-webapp-cloudfront--s3))
+
+## S3 fundamentals
+
+- **Buckets are private by default.** A new bucket and its objects are **not** publicly reachable — you have to deliberately open them up. Access is granted through IAM policies, bucket policies, and (legacy) ACLs.
+- **ACLs — keep them disabled.** Access Control Lists are the old, per-object ownership/permission mechanism from before IAM policies. They make permissions hard to reason about (every object can have its own owner and grants) and are behind many accidental public-exposure incidents. AWS now recommends **disabling ACLs** via **Object Ownership = Bucket owner enforced**, so the bucket owner owns every object and access is decided purely by IAM/bucket policies. Leave ACLs disabled unless a legacy integration truly needs them.
+- **Block Public Access (BPA).** Four switches that act as a hard guardrail — they block and ignore public ACLs and public bucket policies even if someone sets one by mistake. **Turn all four on** for every bucket unless it is *intentionally* a public website. It's defense-in-depth on top of your policies.
+- **Bucket policy.** A resource-based JSON policy on the bucket stating *who* (which principals) may do *what* (actions) on *which* objects — e.g. "only this CloudFront distribution (via OAC) may read this bucket." Prefer specific, least-privilege principals over `*`.
+- **Versioning.** Keeps every version of an object, so overwrites and deletes are recoverable (a delete just adds a delete marker). Essential for buckets holding important state.
+- **CORS.** Cross-Origin Resource Sharing rules tell the browser which other origins may call the bucket directly from JavaScript. Only needed when a browser on a different domain fetches objects straight from S3 — **not** needed when a CDN (CloudFront) serves them or for backend-only buckets.
+
+## Terraform state bucket — `fleetman-terraform123`
+
+Holds the Terraform state (the record of everything Terraform manages). It must exist **before** `terraform init`, so it's created by hand. What it needs for production:
+
+- **Versioning: ON** — state is the source of truth; versioning lets you roll back a corrupted or accidentally-overwritten state file.
+- **Encryption: ON** — SSE-S3 (AES-256) at rest (use SSE-KMS if you need customer-managed/audited keys).
+- **Block Public Access: ON (all four)** — state must never be public.
+- **ACLs disabled** — Object Ownership = Bucket owner enforced.
+- **Access via IAM** — Terraform reads/writes state as the `devops` IAM user, whose policy allows `s3:ListBucket` + `s3:GetObject/PutObject/DeleteObject` on this bucket (no bucket policy needed when the same account's IAM user is used).
+
+**Recommended lifecycle policy (production):**
+
+- Keep **noncurrent (old) versions for 90 days**, then expire them.
+- **Abort incomplete multipart uploads after 7 days.**
+- **Never expire current objects** — you always want the latest state.
+
+## CodePipeline artifacts bucket — `fleet-management-system-codepipeline-artifacts-prod`
+
+CodePipeline passes artifacts (source zip, build output) between stages through this bucket; Terraform creates it. Production settings:
+
+- **Versioning:** optional — artifacts are short-lived and reproducible, so it can stay off.
+- **Encryption: ON** — SSE-S3 (AES-256).
+- **Block Public Access: ON (all four).**
+- **ACLs disabled** — Object Ownership = Bucket owner enforced.
+- **Access via IAM** — the CodePipeline/CodeBuild role has read/write permission on this bucket.
+
+**Recommended lifecycle policy (production):** artifacts pile up on every run, so expire aggressively:
+
+- **Expire current objects after ~7 days** (only needed during a run).
+- **Expire noncurrent versions after 1 day** and **abort incomplete multipart uploads after 1 day.**
 
 ---
 
