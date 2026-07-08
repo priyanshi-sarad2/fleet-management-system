@@ -1460,7 +1460,10 @@ This is the important gotcha. **ACM is a regional service:** a certificate lives
 
 Fleetman runs everything in **us-east-1** *and* fronts it with CloudFront, so **one `us-east-1` certificate serves both** the CloudFront distributions and the ALB — that's why the cert lives in us-east-1. (If the cluster/ALB ever moved to another region while keeping CloudFront, we'd need **two** certificates: one in `us-east-1` for CloudFront and one in the ALB's region for the ALB.)
 
-**Rule of thumb:** CloudFront → certificate in **`us-east-1`** (always); ALB / API Gateway / other regional services → certificate in **that resource's own region**.
+**Rule of thumb:**
+
+- **CloudFront** → certificate in **`us-east-1`** (always).
+- **ALB / API Gateway / other regional services** → certificate in **that resource's own region**.
 
 ---
 
