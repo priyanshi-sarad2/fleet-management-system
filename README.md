@@ -283,8 +283,8 @@ We use three private S3 buckets (details in [S3 Buckets](#s3-buckets)):
 
 | Bucket | Purpose | Created by |
 |--------|---------|-----------|
-| `fleetman-terraform` | Stores the Terraform state file | Manually (must exist before Terraform can use it as its backend) |
-| `fleet-management-system-codepipeline-artifacts-prod` | Artifacts passed between AWS CodePipeline stages | Terraform |
+| [`fleetman-terraform`](#terraform-state-bucket--fleetman-terraform) | Stores the Terraform state file | Manually (must exist before Terraform can use it as its backend) |
+| [`fleet-management-system-codepipeline-artifacts-prod`](#codepipeline-artifacts-bucket--fleet-management-system-codepipeline-artifacts-prod) | Artifacts passed between AWS CodePipeline stages | Terraform |
 | `fleetman-webapp-prod` | Hosts the built Angular webapp (served via CloudFront) | Terraform |
 
 #### How Each Service Is Deployed
