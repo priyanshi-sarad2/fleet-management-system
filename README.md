@@ -19,7 +19,7 @@
 - [Handling environment variables](#handling-environment-variables)
 - [ACM — TLS Certificates](#acm--tls-certificates)
 - [S3 Buckets](#s3-buckets)
-- [Exposing the API Gateway (CloudFront + ALB)](#exposing-the-api-gateway-cloudfront--alb)
+- [Exposing the API Gateway (Load Balancer Controller + ALB + CloudFront)](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront)
 - [Deploying the webapp (CloudFront + S3)](#deploying-the-webapp-cloudfront--s3)
 - [Pod logs with Fluent Bit](#pod-logs-with-fluent-bit)
 - [CI/CD with CodePipeline](#cicd-with-codepipeline)
@@ -267,9 +267,9 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 | [MongoDB Atlas](#mongodb-atlas) | Managed MongoDB for storing vehicle position history |
 | [Docker](#docker) | Containerizes each service into an image (built in CI and pushed to ECR) |
 | [EKS cluster](#deploying-eks-cluster) | The Kubernetes cluster that hosts the backend services (API Gateway, Position Tracker, Position Simulator) |
-| [Load Balancer](#exposing-the-api-gateway-cloudfront--alb) | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
+| [Load Balancer](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront) | Part of the Load Balancer Controller — exposes the API Gateway (and any other service we want to expose) |
 | [S3](#s3-buckets) | Object storage — webapp static site (with CloudFront/OAC), CodePipeline artifacts, and the Terraform state bucket |
-| CloudFront | CDN in front of both the [webapp](#deploying-the-webapp-cloudfront--s3) and the [API Gateway](#exposing-the-api-gateway-cloudfront--alb) |
+| CloudFront | CDN in front of both the [webapp](#deploying-the-webapp-cloudfront--s3) and the [API Gateway](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront) |
 | [Secrets Manager](#handling-environment-variables) | Stores the services' sensitive config (broker credentials, MongoDB URI), synced into the cluster by the External Secrets Operator |
 | SSM Parameter Store | Stores Amazon MQ's auto-generated broker credentials |
 | [ACM (public certificate)](#acm--tls-certificates) | Public TLS certificate (root domain + wildcard, in `us-east-1`) for HTTPS — used by CloudFront and the ALB |
@@ -304,7 +304,7 @@ A few map/list variables are **also gated by a toggle** — the list decides *wh
 **Helm-installed cluster add-ons** (installed by the addons layer via Terraform's Helm provider):
 
 - External Secrets Operator (ESO) — syncs secrets from AWS Secrets Manager into Kubernetes Secrets
-- AWS Load Balancer Controller — provisions an ALB from Kubernetes Ingress resources
+- [AWS Load Balancer Controller](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront) — provisions an ALB from Kubernetes Ingress resources
 - [AWS for Fluent Bit](#pod-logs-with-fluent-bit) — ships application pod logs to CloudWatch Logs
 
 #### S3
@@ -323,7 +323,7 @@ We use two CloudFront distributions:
 
 | Distribution | Origin | Serves |
 |--------------|--------|--------|
-| [API Gateway](#exposing-the-api-gateway-cloudfront--alb) | Application Load Balancer (ALB) | The public REST + WebSocket API (`fleetman-api.<domain>`) |
+| [API Gateway](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront) | Application Load Balancer (ALB) | The public REST + WebSocket API (`fleetman-api.<domain>`) |
 | [Webapp](#deploying-the-webapp-cloudfront--s3) | S3 bucket (`fleetman-webapp-prod`, via OAC) | The static Angular SPA (`fleetman.<domain>`) |
 
 #### How Each Service Is Deployed
@@ -331,7 +331,7 @@ We use two CloudFront distributions:
 | Service | Deployment |
 |---------|-----------|
 | Webapp | [Static SPA served via CloudFront + S3](#deploying-the-webapp-cloudfront--s3) |
-| Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) (the API Gateway is also [exposed publicly via CloudFront + ALB](#exposing-the-api-gateway-cloudfront--alb)) |
+| Position Simulator, Position Tracker, API Gateway | Kubernetes Deployments in the [EKS cluster](#deploying-eks-cluster) (the API Gateway is also [exposed publicly via CloudFront + ALB](#exposing-the-api-gateway-load-balancer-controller--alb--cloudfront)) |
 | Queue | [Amazon MQ](#deploying-the-queue--amazon-mq) (managed ActiveMQ) |
 | MongoDB (for Position Tracker) | [MongoDB Atlas](#mongodb-atlas) (managed) |
 
@@ -1590,28 +1590,29 @@ CodePipeline passes artifacts (source zip, build output) between stages through 
 
 ---
 
-# Exposing the API Gateway (CloudFront + ALB)
+# Exposing the API Gateway (Load Balancer Controller + ALB + CloudFront)
 
-The **API Gateway** is the only backend service the outside world talks to directly. The Angular webapp calls it for both the **REST** endpoints (the list of vehicles and their details) and a **WebSocket** stream (`wss://…`) that pushes **live position updates** to the map. Like the other backend services it runs as a **pod on EKS**, so the task here is to take that in-cluster pod and publish it on a clean, public HTTPS URL — `https://fleetman-api.priyanshiseniordevops.online`.
+The **API Gateway** is the only backend service the outside world talks to directly. The Angular webapp calls it for both the **REST** endpoints (the list of vehicles and their details) and a **WebSocket** stream (`wss://...`) that pushes **live position updates** to the map. Like the other backend services it runs as a **pod on EKS**, so the job here is to take that in-cluster pod and publish it on a clean, public HTTPS URL — `https://fleetman-api.priyanshiseniordevops.online`.
 
-A request makes four hops:
+Four pieces make that happen, and we'll build them up in order: the **AWS Load Balancer Controller**, the **Ingress** it reads, the **CloudFront** distribution in front, and finally the **HTTPS/TLS** that secures the whole path.
 
-```text
-Browser
-  │  https://fleetman-api.<domain>              REST + wss (real-time updates)
-  ▼
-CloudFront                                       custom domain · TLS · edge
-  │  https-only → origin  fleetman-alb.<domain>  (CNAME → the ALB's DNS name)
-  ▼
-Application Load Balancer                        internet-facing, built from the Ingress
-  │  routes to the target group (pod IPs)
-  ▼
-api-gateway Service ▶ api-gateway Pod            ClusterIP :8080
-```
+## 1. The AWS Load Balancer Controller
 
-## From pod to public ALB (Service → Ingress → Load Balancer Controller)
+Kubernetes doesn't know how to create an AWS load balancer on its own. The **AWS Load Balancer Controller** is the piece that bridges that gap: it runs **as a pod inside the cluster** (installed in the addons layer via Helm, and given ELB/EC2 permissions through **IRSA**). Its whole job is to **watch** the Kubernetes API for `Ingress` (and `Service` type `LoadBalancer`) objects and, whenever it sees one, call the **AWS ELBv2 APIs** to create and continuously reconcile a **real Application Load Balancer** that matches what the object asks for.
 
-Inside the cluster the gateway is an ordinary **Deployment + Service** (a `ClusterIP` on port 8080 — reachable only from *inside* the cluster). To publish it, its Helm chart also ships an **Ingress**, and the **AWS Load Balancer Controller** (installed in the addons layer) watches for Ingress objects and provisions a real **Application Load Balancer** to match. The important annotations:
+![How the AWS Load Balancer Controller turns an Ingress into a real ALB](docs/images/api-lb-controller.png)
+
+Concretely, for our API Gateway it:
+
+1. **watches** the `Ingress` object (below),
+2. **creates and configures** an ALB, its listeners, and a target group — from the ALB annotations on the Ingress, and
+3. **registers the pod IPs** into the target group and health-checks them, keeping the set in sync as pods come and go.
+
+Because it's driven by Kubernetes objects, exposing a service is **declarative**: you ship an Ingress with your app and the ALB appears (and disappears) to match — no clicking in the console. (It's also listed in the [EKS add-ons](#eks-add-ons).)
+
+## 2. The Ingress (the desired state the controller reads)
+
+The **Ingress** is the Kubernetes object that says *"expose me, and here's how."* The gateway is otherwise an ordinary **Deployment + Service** — a `ClusterIP` on port 8080, reachable only from *inside* the cluster — so its Helm chart also ships this Ingress, and the controller turns it into the public ALB. The important annotations:
 
 ```yaml
 alb.ingress.kubernetes.io/scheme: internet-facing        # public ALB (not internal)
@@ -1622,26 +1623,24 @@ alb.ingress.kubernetes.io/certificate-arn: <wildcard ACM cert, us-east-1>
 alb.ingress.kubernetes.io/healthcheck-path: /            # the gateway returns 200 at "/"
 ```
 
+Each annotation maps directly to a setting the controller applies to the ALB:
+
+- **`scheme: internet-facing`** — the ALB gets public IPs and is placed in the **public subnets** (a public entry point).
 - **`target-type: ip`** — with the Amazon VPC CNI every pod already has a real VPC IP, so the ALB puts the **pod IPs straight into its target group** (no extra NodePort hop).
 - **`group.name: fleetman`** — the **IngressGroup** feature merges every Ingress sharing this group name into a **single shared ALB**, instead of one ALB per service. Expose more services later and they reuse the same load balancer.
-- **`scheme: internet-facing`** — the ALB gets public IPs and is placed in the **public subnets**.
-- **`listen-ports` + `certificate-arn`** — the ALB listens on both 80 and 443; the wildcard cert is attached so the 443 listener can serve TLS.
+- **`listen-ports` + `certificate-arn`** — the ALB listens on both 80 and 443, and the wildcard cert is attached so the **443 listener can serve TLS** (this is the ALB end of "HTTPS hop #2" below).
 
 > **Gotcha we hit — AZ coverage.** An internet-facing ALB can only send traffic to pods in an **Availability Zone where it owns a public subnet**. Our nodes span **4 AZs**, so a pod can land in any of them; if the public subnets didn't cover all 4, a pod in an uncovered AZ shows up as an **"unused"/unhealthy target** and the API returns **503**. That's why the VPC has **one public subnet per AZ** — so the ALB can reach a pod wherever it's scheduled.
 
-## Why front the ALB with CloudFront at all?
+## 3. Fronting the ALB with CloudFront
 
-The ALB alone could serve the API, so why add CloudFront? For this project the value isn't caching (the API is dynamic — see below) but everything else CloudFront gives you at the edge:
+The ALB could serve the API directly, so why add CloudFront? For this project the value isn't caching (the API is dynamic) but everything else CloudFront gives you at the edge:
 
 - **One clean domain family + one certificate.** The webapp is `fleetman.<domain>` and the API is `fleetman-api.<domain>` — both are CloudFront distributions on the **same root domain**, secured by the **same wildcard ACM cert** in `us-east-1`. Consistent, professional URLs with managed HTTPS.
 - **A stable origin name that matches the cert.** CloudFront's origin is the **`fleetman-alb.<domain>` CNAME**, which points at the ALB's ugly `*.elb.amazonaws.com` DNS name. Using this friendly name (instead of the raw ELB name) means the **origin's TLS certificate matches** (it's covered by the wildcard), so the https-only origin connection has no SNI/host mismatch.
 - **Edge TLS termination + AWS Shield Standard** (basic DDoS protection) in front of the cluster, and a single, consistent public entry point that mirrors how the webapp is served.
 
-> **Gotcha we hit — stale origin CNAME.** The `fleetman-alb` CNAME points at a **specific** ALB DNS name. If the Ingress/ALB is recreated, that DNS name changes, and until the CNAME is repointed CloudFront can't resolve the origin → **502 "can't resolve the origin domain."** Repoint the CNAME (and let CloudFront re-resolve) after any ALB recreation.
-
-## The API's CloudFront distribution (the mirror image of the webapp's)
-
-The API distribution is configured almost **opposite** to the static webapp, because an API is dynamic and per-request:
+Its distribution is configured almost **opposite** to the static webapp, because an API is dynamic and per-request:
 
 | Setting | Webapp (static) | API Gateway (dynamic) |
 |---|---|---|
@@ -1661,13 +1660,23 @@ cloudfront_alb_origins = {
 }
 ```
 
-## WebSockets through CloudFront
-
-The live map is driven by a **WebSocket** (`wss://fleetman-api.<domain>/…`), and getting that through CloudFront needs two specific settings — both learned the hard way when the map stopped updating:
+**WebSockets through CloudFront.** The live map is driven by a WebSocket (`wss://fleetman-api.<domain>/...`), and getting that through CloudFront needs two specific settings — both learned the hard way when the map stopped updating:
 
 - **`Managed-AllViewer` origin request policy** — forwards the headers that make the WebSocket handshake work (`Upgrade`, `Connection`, `Sec-WebSocket-Key/Version/Accept`, plus `Host`). With the default policy CloudFront strips these and the upgrade fails.
-- **Compression OFF** — CloudFront's automatic compression **breaks the WebSocket upgrade** (the handshake comes back as `HTTP 400`), so it must be disabled on this distribution. (There's nothing worth compressing on a dynamic API anyway.)
+- **Compression OFF** — CloudFront's automatic compression **breaks the WebSocket upgrade** (the handshake comes back as `HTTP 400`), so it must be disabled on this distribution.
 - **Caching disabled** — API responses must never be cached, so all TTLs are `0`.
+
+> **Gotcha we hit — stale origin CNAME.** The `fleetman-alb` CNAME points at a **specific** ALB DNS name. If the Ingress/ALB is recreated, that DNS name changes, and until the CNAME is repointed CloudFront can't resolve the origin → **502 "can't resolve the origin domain."** Repoint the CNAME (and let CloudFront re-resolve) after any ALB recreation.
+
+## 4. HTTPS end to end (the two TLS hops)
+
+Putting it together, a request is encrypted in **two separate TLS hops**, and then travels as plain HTTP on the private network inside the VPC:
+
+![End-to-end request with two HTTPS/TLS hops, then plain HTTP inside the VPC](docs/images/api-https-flow.png)
+
+- **Hop #1 — user → CloudFront (HTTPS).** The browser opens `https://fleetman-api.<domain>`, which resolves to the CloudFront distribution. CloudFront presents the **ACM wildcard certificate in `us-east-1`** (CloudFront only reads certs from us-east-1 — see [ACM](#acm--tls-certificates)). Its viewer policy is **redirect-to-HTTPS**, so any `http://` request is 301-redirected up to HTTPS first.
+- **Hop #2 — CloudFront → ALB (HTTPS).** CloudFront connects to its origin, `fleetman-alb.<domain>` (the CNAME → the ALB's DNS name), over **https-only**. The ALB's **443 listener** presents the **`*.<domain>` wildcard cert**; because the origin hostname is `fleetman-alb.<domain>` (covered by the wildcard), SNI matches and the handshake is clean. This is exactly why the **one** us-east-1 wildcard certificate can serve both CloudFront and the ALB.
+- **Inside the VPC — plain HTTP.** TLS **terminates at the ALB**. From there to the `api-gateway` Service and Pod the traffic is ordinary **HTTP on port 8080**, on the cluster's private network — it's never exposed publicly, so it doesn't need to be re-encrypted.
 
 ## CORS (why the API needs `ALLOWED_ORIGINS`)
 
