@@ -1951,8 +1951,6 @@ The key details on the distribution:
 - **Default root object `index.html`** — when someone requests the bare domain (`/`), CloudFront serves `index.html` (the SPA app shell) instead of returning a directory listing. Set from `root_object` in tfvars.
 - **Price class "North America and Europe"** — limits which edge locations are used (`PriceClass_100`), trading some global reach for lower cost. Set from `price_class` in tfvars.
 
-> The **ARN is blurred** because it embeds the AWS account ID.
-
 ### Origin: a private S3 bucket locked to CloudFront (OAC)
 
 ![CloudFront origin — S3 regional domain with Origin Access Control (recommended)](docs/images/cloudfront-origin-oac.png)
@@ -1996,9 +1994,9 @@ cloudfront_s3_origins = {
 
 | Component | Setting | Why `None` for a static SPA |
 |---|---|---|
-| **Query strings** | `query_string = false` | `index.html` is identical whether the URL is `/` or `/?utm_source=x`. If query strings were in the key, every tracking/cache-buster param (`?utm_...`, random values) would be treated as a brand-new object and re-fetched from S3 — killing the hit ratio for an identical response. |
+| **Query strings** | `query_string = false` | The same `index.html` comes back whether the URL is `/` or `/?utm_source=x`. If the query string is in the cache key, each different value (`?utm_...`, random cache-busters) becomes a **new cache key → a new, empty cache slot**, so CloudFront can't reuse the old copy and re-fetches the identical file from S3. |
 | **Cookies** | `cookies_forward = "none"` | There's no server-side session here; S3 just hands back a file. Caching on cookies would create a distinct copy **per browser/user**, so the cache would almost never hit — and it would needlessly leak cookies to the origin. |
-| **Headers** | `headers = []` | The file doesn't vary by request headers, so caching on e.g. `User-Agent` would fork the cache into thousands of near-identical copies. None belong in the key. |
+| **Headers** | `headers = []` | The file is the same no matter what headers the browser sends. If a header like `User-Agent` is in the cache key, every browser version becomes a **new cache key → its own copy**, so the same file gets stored many times over and is rarely reused. |
 
 **Net effect:** with all three `None`, the cache key is **just the path**. One visitor anywhere in a region warms that edge cache, and every subsequent viewer worldwide is served from CloudFront instead of S3 — the **highest possible hit ratio, lowest latency, and lowest S3 cost**.
 
