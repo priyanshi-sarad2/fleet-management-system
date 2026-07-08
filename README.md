@@ -2268,21 +2268,15 @@ This is separate from **EKS control-plane logging** (`api`, `audit`, `authentica
 
 # CI/CD with CodePipeline
 
-The three backend services (API Gateway, Position Tracker, Position Simulator) run on the EKS
-cluster, and each one has its own **AWS CodePipeline** that takes a code change all the way to
-the cluster — **build the image, push it to ECR, and deploy it with Helm** — with no manual
-steps. Without this you'd have to log in to ECR, `docker build`, `docker push`, then run
-`helm upgrade` by hand for every change; the pipeline does all of that consistently and
-records every run.
+Every service has its own **AWS CodePipeline** that takes a code change all the way to production with no manual steps — there are **four pipelines, one per service**. The three backend services (API Gateway, Position Tracker, Position Simulator) build a Docker image and deploy it to **EKS**; the **webapp** builds a static bundle and ships it to **S3 + CloudFront**. A change to one service only rebuilds and redeploys that service.
 
-There is **one pipeline per service**, so a change to one service only rebuilds and redeploys
-that service:
+Without this you'd be logging in to ECR and running `docker build` / `docker push` / `helm upgrade` by hand for the backends (and `npm run build` + `aws s3 sync` + a CloudFront invalidation for the webapp) on every change; the pipelines do all of it consistently and record every run.
 
-![The three CodePipeline pipelines — one per service — all succeeded](docs/images/codepipeline-pipelines.png)
+![The four CodePipeline pipelines — one per service — all succeeded](docs/images/codepipeline-pipelines.png)
 
-## The stages
+## The backend pipelines (Source → Build → EKSDeploy)
 
-Each service's pipeline has three stages: **Source → Build → EKSDeploy**.
+Each **backend** service's pipeline has three stages: **Source → Build → EKSDeploy**.
 
 ![A single pipeline showing the Source, Build and EKSDeploy stages](docs/images/codepipeline-stages.png)
 
@@ -2359,6 +2353,60 @@ The environment variables these specs use (`ECR_REPOSITORY_URI`, `ECR_LOGIN`, `R
 `AWS_REGION`, `EKS_CLUSTER_NAME`, `K8S_NAMESPACE`, `HELM_RELEASE_NAME`, `HELM_CHART_PATH`,
 `HELM_VALUES_FILE`) are injected by the CodeBuild projects, so the same specs work for every
 service.
+
+## The webapp pipeline (Source → Build → S3 → Invalidate)
+
+The webapp isn't deployed to EKS, so its pipeline is different — **four stages** that end at S3 and CloudFront instead of the cluster:
+
+![The webapp pipeline — Source, Build, DeployToS3 and InvalidateCloudFront, all succeeded](docs/images/codepipeline-webapp-stages.png)
+
+**1. Source** — the same GitHub connection pulls the monorepo into `source_output`.
+
+**2. Build** (CodeBuild, runs `k8s-fleetman-webapp-angular/buildspec.yml`) — installs **Node 10** (Angular 6 needs it) via nvm, runs `npm ci`, **bakes the API URL into the build** (writes `environment.prod.ts` so the SPA knows where the API Gateway is), then `npm run build`. The compiled static site in `dist/` becomes the `build_output` artifact:
+
+```yaml
+version: 0.2
+phases:
+  install:
+    commands:
+      - curl -fsSL -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+      - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm install 10 && nvm use 10 && cd "$CODEBUILD_SRC_DIR/k8s-fleetman-webapp-angular" && npm ci
+  build:
+    commands:
+      # bake the API endpoint into the prod environment, then build
+      - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 10 && cd "$CODEBUILD_SRC_DIR/k8s-fleetman-webapp-angular" && echo "export const environment = { production: true, apiUrl: '$API_URL' };" > src/environments/environment.prod.ts && npm run build
+artifacts:
+  files:
+    - "**/*"
+  base-directory: k8s-fleetman-webapp-angular/dist   # the built site becomes build_output
+  discard-paths: no
+```
+
+**3. DeployToS3** — a built-in CodePipeline **S3 deploy action** (not CodeBuild). With `Extract = true` it unzips `build_output` straight into the webapp bucket, so the site's files land at the bucket root:
+
+```hcl
+action {
+  name     = "DeployToS3"
+  category = "Deploy"
+  owner    = "AWS"
+  provider = "S3"
+  input_artifacts = ["build_output"]
+  configuration = {
+    BucketName = "fleetman-webapp-prod"
+    Extract    = "true"
+  }
+}
+```
+
+**4. InvalidateCloudFront** — a small CodeBuild action that clears the CDN cache so viewers get the new build immediately instead of waiting for the TTL. Its inline buildspec is essentially one line:
+
+```yaml
+build:
+  commands:
+    - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths '/*'
+```
+
+In Terraform, the last two stages are toggled on only for the webapp (`deploy_on_eks = false`), and the invalidation IAM permission is **scoped to that one distribution's ARN**, not `*`.
 
 ## How the monorepo is handled
 
